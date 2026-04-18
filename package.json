@@ -1,0 +1,65 @@
+{
+  "name": "PostProSuite",
+  "version": "1.0.0",
+  "description": "PostPro Suite - Professional Image Processing Workflow",
+  "main": "main.js",
+  "homepage": "./",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build": "electron-builder",
+    "release": "npm run build -- --publish always"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PostProSuite/Lampenwelt.de.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/PostProSuite/Lampenwelt.de/issues"
+  },
+  "build": {
+    "appId": "com.postprosuite.app",
+    "productName": "PostPro Suite",
+    "files": [
+      "main.js",
+      "server.js",
+      "preload.js",
+      "node_modules/**/*",
+      "src/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.business",
+      "icon": "assets/icon.icns"
+    },
+    "dmg": {
+      "sign": false
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "PostProSuite",
+      "repo": "Lampenwelt.de",
+      "releaseType": "release"
+    }
+  },
+  "devDependencies": {
+    "electron": "^41.2.1",
+    "electron-builder": "^26.8.1",
+    "electron-is-dev": "^3.0.1"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "electron-updater": "^6.8.3",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0"
+  }
+}

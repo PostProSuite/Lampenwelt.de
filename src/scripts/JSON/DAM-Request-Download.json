@@ -1,0 +1,4303 @@
+[
+    {
+        "uuid": "f247e8b0ce654a15b85cff157ad53caa",
+        "filenameSource": "49ff74f18fee18d7492f68b58582a870",
+        "fileExt": "jpg",
+        "createTimeStamp": "2026-03-27T12:40:27.570Z",
+        "md5source": "49ff74f18fee18d7492f68b58582a870",
+        "lastChangeTimeStamp": "2026-03-28T02:18:10.378Z",
+        "uniqueId": "8825618BXJimGyt18ELXc6kA_DcAT",
+        "fileName": "49ff74f18fee18d7492f68b58582a870.jpg",
+        "title": "70022231_O11",
+        "language": "##",
+        "clipType": -1,
+        "categories": [
+            {
+                "id": 664419,
+                "parentId": 664480,
+                "type": "asset",
+                "name": "GPT-API-processed",
+                "titles": [
+                    {
+                        "value": "GPT-API-processed",
+                        "language": "de"
+                    }
+                ],
+                "activated": true,
+                "path": "Status/GPT-API-processed"
+            },
+            {
+                "id": 408719,
+                "parentId": 324724,
+                "type": "asset",
+                "name": "A10-Mood",
+                "titles": [
+                    {
+                        "value": "A10-Mood",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Image-Classification/A10-Mood"
+            },
+            {
+                "id": 789660,
+                "parentId": 781613,
+                "type": "directory",
+                "name": "Erg\u00e4nzung 7000169-001",
+                "titles": [
+                    {
+                        "value": "Erg\u00e4nzung 7000169-001",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Asset Import/PCM-Import/7000169-001/Erg\u00e4nzung 7000169-001"
+            }
+        ],
+        "gema": false,
+        "validFrom": "2026-03-27T12:40:17.000Z",
+        "rating": 99,
+        "resolution": "5490x8235",
+        "duration": 0,
+        "fps": 0,
+        "properties": [
+            {
+                "key": "filename-source",
+                "value": "49ff74f18fee18d7492f68b58582a870.jpg",
+                "language": "##"
+            },
+            {
+                "key": "md5-source",
+                "value": "49ff74f18fee18d7492f68b58582a870",
+                "language": "##"
+            },
+            {
+                "key": "filesize-source",
+                "value": "24951586",
+                "language": "##"
+            },
+            {
+                "key": "resolution",
+                "value": "5490x8235",
+                "language": "##"
+            },
+            {
+                "key": "format",
+                "value": "jpg",
+                "language": "##"
+            },
+            {
+                "key": "title",
+                "value": "70022231_O11",
+                "language": "##"
+            },
+            {
+                "key": "language",
+                "value": "##",
+                "language": "##"
+            }
+        ],
+        "products": [
+            {
+                "title": "70022231",
+                "uniqueId": "8825618BXJimGyt18ELXc6kA_DcAT",
+                "requestKey": "70022231",
+                "keyType": 100
+            }
+        ],
+        "activated": true,
+        "fileSize": 24951586,
+        "importTime": "2026-03-27T12:40:27.570Z",
+        "fileType": "Picture",
+        "links": [
+            {
+                "valid_to": "2026-05-15T12:25:11.000Z",
+                "location": "https://ia2.mycliplister.com/is/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/f247e8b0ce654a15b85cff157ad53caa",
+                "fileType": "jpg",
+                "name": "iapi",
+                "fileSize": 24951586,
+                "linkResolution": "5490x8235"
+            },
+            {
+                "valid_to": "2026-05-15T12:24:11.000Z",
+                "location": "https://ia2.mycliplister.com/asrc/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/f247e8b0ce654a15b85cff157ad53caa",
+                "fileType": "jpg",
+                "name": "source",
+                "fileSize": 24951586,
+                "linkResolution": "5490x8235"
+            }
+        ],
+        "processStatus": {
+            "currentStep": "Published"
+        },
+        "cluserId": 88256,
+        "customMeta": [
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.437Z",
+                "cmf_id": 486,
+                "cmf_name": "web_enabled",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Web Enabled"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998561,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.789Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.488Z",
+                "cmf_id": 487,
+                "cmf_name": "is_exempted_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Exempted Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998563,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.789Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.526Z",
+                "cmf_id": 488,
+                "cmf_name": "is_main_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Main Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998565,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            },
+                            {
+                                "label": "0",
+                                "lang": "zz"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.789Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T15:18:50.594Z",
+                "cmf_id": 490,
+                "cmf_name": "type",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Dokument Typ"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998591,
+                        "labels": [
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.789Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-11-14T10:54:12.152Z",
+                "cmf_id": 492,
+                "cmf_name": "lw_att_process_number",
+                "cmf_type": "textField",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Vorgangsnummer"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217591418,
+                        "labels": [
+                            {
+                                "label": "Erg\u00e4nzung 7000169-001",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.789Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T08:59:39.789Z",
+                "cmf_id": 560,
+                "cmf_name": "original/derivat",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Original/Derivat"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824502,
+                        "labels": [
+                            {
+                                "label": "Original",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Original",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.789Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:20.884Z",
+                "cmf_id": 561,
+                "cmf_name": "workflow-status",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Status"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824505,
+                        "labels": [
+                            {
+                                "label": "Beendet",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Finished",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.789Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:52.618Z",
+                "cmf_id": 562,
+                "cmf_name": "workflow-info",
+                "cmf_type": "textBox",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Info"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217516741,
+                        "labels": [
+                            {
+                                "label": "Started at 2026-03-27 13:40:31\nSuccessfully finished at 2026-03-27 13:40:31\n",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.789Z"
+                    }
+                ]
+            }
+        ],
+        "createUserId": 190505,
+        "updateUserId": 190496,
+        "finished": true
+    },
+    {
+        "uuid": "c89a6dd9580c4ab1915c482bdca5f236",
+        "filenameSource": "14c611a3d2612e0c5b48ff69ecd9c4d7",
+        "fileExt": "jpg",
+        "createTimeStamp": "2026-03-27T12:40:27.533Z",
+        "md5source": "14c611a3d2612e0c5b48ff69ecd9c4d7",
+        "lastChangeTimeStamp": "2026-03-28T02:18:10.353Z",
+        "uniqueId": "8825614rPTOcRy2X_RC88yk52lDAT",
+        "fileName": "14c611a3d2612e0c5b48ff69ecd9c4d7.jpg",
+        "title": "70022257_O4",
+        "language": "##",
+        "clipType": -1,
+        "categories": [
+            {
+                "id": 789660,
+                "parentId": 781613,
+                "type": "directory",
+                "name": "Erg\u00e4nzung 7000169-001",
+                "titles": [
+                    {
+                        "value": "Erg\u00e4nzung 7000169-001",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Asset Import/PCM-Import/7000169-001/Erg\u00e4nzung 7000169-001"
+            },
+            {
+                "id": 664419,
+                "parentId": 664480,
+                "type": "asset",
+                "name": "GPT-API-processed",
+                "titles": [
+                    {
+                        "value": "GPT-API-processed",
+                        "language": "de"
+                    }
+                ],
+                "activated": true,
+                "path": "Status/GPT-API-processed"
+            },
+            {
+                "id": 408719,
+                "parentId": 324724,
+                "type": "asset",
+                "name": "A10-Mood",
+                "titles": [
+                    {
+                        "value": "A10-Mood",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Image-Classification/A10-Mood"
+            }
+        ],
+        "gema": false,
+        "validFrom": "2026-03-27T12:40:18.000Z",
+        "rating": 99,
+        "resolution": "5833x8333",
+        "duration": 0,
+        "fps": 0,
+        "properties": [
+            {
+                "key": "format",
+                "value": "jpg",
+                "language": "##"
+            },
+            {
+                "key": "md5-source",
+                "value": "14c611a3d2612e0c5b48ff69ecd9c4d7",
+                "language": "##"
+            },
+            {
+                "key": "filesize-source",
+                "value": "5170284",
+                "language": "##"
+            },
+            {
+                "key": "resolution",
+                "value": "5833x8333",
+                "language": "##"
+            },
+            {
+                "key": "filename-source",
+                "value": "14c611a3d2612e0c5b48ff69ecd9c4d7.jpg",
+                "language": "##"
+            },
+            {
+                "key": "title",
+                "value": "70022257_O4",
+                "language": "##"
+            },
+            {
+                "key": "language",
+                "value": "##",
+                "language": "##"
+            }
+        ],
+        "products": [
+            {
+                "title": "70022257",
+                "uniqueId": "8825614rPTOcRy2X_RC88yk52lDAT",
+                "requestKey": "70022257",
+                "keyType": 100
+            }
+        ],
+        "activated": true,
+        "fileSize": 5170284,
+        "importTime": "2026-03-27T12:40:27.533Z",
+        "fileType": "Picture",
+        "links": [
+            {
+                "valid_to": "2026-05-15T12:25:11.000Z",
+                "location": "https://ia2.mycliplister.com/is/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/c89a6dd9580c4ab1915c482bdca5f236",
+                "fileType": "jpg",
+                "name": "iapi",
+                "fileSize": 5170284,
+                "linkResolution": "5833x8333"
+            },
+            {
+                "valid_to": "2026-05-15T12:24:11.000Z",
+                "location": "https://ia2.mycliplister.com/asrc/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/c89a6dd9580c4ab1915c482bdca5f236",
+                "fileType": "jpg",
+                "name": "source",
+                "fileSize": 5170284,
+                "linkResolution": "5833x8333"
+            }
+        ],
+        "processStatus": {
+            "currentStep": "Published"
+        },
+        "cluserId": 88256,
+        "customMeta": [
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.437Z",
+                "cmf_id": 486,
+                "cmf_name": "web_enabled",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Web Enabled"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998561,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.837Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.488Z",
+                "cmf_id": 487,
+                "cmf_name": "is_exempted_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Exempted Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998563,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.837Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.526Z",
+                "cmf_id": 488,
+                "cmf_name": "is_main_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Main Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998565,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            },
+                            {
+                                "label": "0",
+                                "lang": "zz"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.837Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T15:18:50.594Z",
+                "cmf_id": 490,
+                "cmf_name": "type",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Dokument Typ"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998591,
+                        "labels": [
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.837Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-11-14T10:54:12.152Z",
+                "cmf_id": 492,
+                "cmf_name": "lw_att_process_number",
+                "cmf_type": "textField",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Vorgangsnummer"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217591417,
+                        "labels": [
+                            {
+                                "label": "Erg\u00e4nzung 7000169-001",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.837Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T08:59:39.789Z",
+                "cmf_id": 560,
+                "cmf_name": "original/derivat",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Original/Derivat"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824502,
+                        "labels": [
+                            {
+                                "label": "Original",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Original",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.837Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:20.884Z",
+                "cmf_id": 561,
+                "cmf_name": "workflow-status",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Status"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824505,
+                        "labels": [
+                            {
+                                "label": "Beendet",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Finished",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.837Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:52.618Z",
+                "cmf_id": 562,
+                "cmf_name": "workflow-info",
+                "cmf_type": "textBox",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Info"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217516734,
+                        "labels": [
+                            {
+                                "label": "Started at 2026-03-27 13:40:30\nSuccessfully finished at 2026-03-27 13:40:31\n",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.837Z"
+                    }
+                ]
+            }
+        ],
+        "createUserId": 190505,
+        "updateUserId": 190496,
+        "finished": true
+    },
+    {
+        "uuid": "c7c11cad430b4bd2a4c0d073e83148fa",
+        "filenameSource": "86ab48e7190bb212a2b91304c1309a5e",
+        "fileExt": "jpg",
+        "createTimeStamp": "2026-03-27T12:40:16.804Z",
+        "md5source": "86ab48e7190bb212a2b91304c1309a5e",
+        "lastChangeTimeStamp": "2026-03-28T02:18:10.312Z",
+        "uniqueId": "8825603fyiYqwyQ89xv4Xz9FKWnAT",
+        "fileName": "86ab48e7190bb212a2b91304c1309a5e.jpg",
+        "title": "70022245_O5",
+        "language": "##",
+        "clipType": -1,
+        "categories": [
+            {
+                "id": 664419,
+                "parentId": 664480,
+                "type": "asset",
+                "name": "GPT-API-processed",
+                "titles": [
+                    {
+                        "value": "GPT-API-processed",
+                        "language": "de"
+                    }
+                ],
+                "activated": true,
+                "path": "Status/GPT-API-processed"
+            },
+            {
+                "id": 789660,
+                "parentId": 781613,
+                "type": "directory",
+                "name": "Erg\u00e4nzung 7000169-001",
+                "titles": [
+                    {
+                        "value": "Erg\u00e4nzung 7000169-001",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Asset Import/PCM-Import/7000169-001/Erg\u00e4nzung 7000169-001"
+            },
+            {
+                "id": 408719,
+                "parentId": 324724,
+                "type": "asset",
+                "name": "A10-Mood",
+                "titles": [
+                    {
+                        "value": "A10-Mood",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Image-Classification/A10-Mood"
+            }
+        ],
+        "gema": false,
+        "validFrom": "2026-03-27T12:40:14.000Z",
+        "rating": 99,
+        "resolution": "1080x1080",
+        "duration": 0,
+        "fps": 0,
+        "properties": [
+            {
+                "key": "filesize-source",
+                "value": "486884",
+                "language": "##"
+            },
+            {
+                "key": "resolution",
+                "value": "1080x1080",
+                "language": "##"
+            },
+            {
+                "key": "format",
+                "value": "jpg",
+                "language": "##"
+            },
+            {
+                "key": "md5-source",
+                "value": "86ab48e7190bb212a2b91304c1309a5e",
+                "language": "##"
+            },
+            {
+                "key": "title",
+                "value": "70022245_O5",
+                "language": "##"
+            },
+            {
+                "key": "filename-source",
+                "value": "86ab48e7190bb212a2b91304c1309a5e.jpg",
+                "language": "##"
+            },
+            {
+                "key": "language",
+                "value": "##",
+                "language": "##"
+            }
+        ],
+        "products": [
+            {
+                "title": "70022245",
+                "uniqueId": "8825603fyiYqwyQ89xv4Xz9FKWnAT",
+                "requestKey": "70022245",
+                "keyType": 100
+            }
+        ],
+        "activated": true,
+        "fileSize": 486884,
+        "importTime": "2026-03-27T12:40:16.804Z",
+        "fileType": "Picture",
+        "links": [
+            {
+                "valid_to": "2026-05-15T12:25:11.000Z",
+                "location": "https://ia2.mycliplister.com/is/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/c7c11cad430b4bd2a4c0d073e83148fa",
+                "fileType": "jpg",
+                "name": "iapi",
+                "fileSize": 486884,
+                "linkResolution": "1080x1080"
+            },
+            {
+                "valid_to": "2026-05-15T12:24:11.000Z",
+                "location": "https://ia2.mycliplister.com/asrc/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/c7c11cad430b4bd2a4c0d073e83148fa",
+                "fileType": "jpg",
+                "name": "source",
+                "fileSize": 486884,
+                "linkResolution": "1080x1080"
+            }
+        ],
+        "processStatus": {
+            "currentStep": "Published"
+        },
+        "cluserId": 88256,
+        "customMeta": [
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.437Z",
+                "cmf_id": 486,
+                "cmf_name": "web_enabled",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Web Enabled"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998561,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.804Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.488Z",
+                "cmf_id": 487,
+                "cmf_name": "is_exempted_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Exempted Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998563,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.804Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.526Z",
+                "cmf_id": 488,
+                "cmf_name": "is_main_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Main Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998565,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            },
+                            {
+                                "label": "0",
+                                "lang": "zz"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.804Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T15:18:50.594Z",
+                "cmf_id": 490,
+                "cmf_name": "type",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Dokument Typ"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998591,
+                        "labels": [
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.804Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-11-14T10:54:12.152Z",
+                "cmf_id": 492,
+                "cmf_name": "lw_att_process_number",
+                "cmf_type": "textField",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Vorgangsnummer"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217591415,
+                        "labels": [
+                            {
+                                "label": "Erg\u00e4nzung 7000169-001",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.804Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T08:59:39.789Z",
+                "cmf_id": 560,
+                "cmf_name": "original/derivat",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Original/Derivat"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824502,
+                        "labels": [
+                            {
+                                "label": "Original",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Original",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.804Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:20.884Z",
+                "cmf_id": 561,
+                "cmf_name": "workflow-status",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Status"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824505,
+                        "labels": [
+                            {
+                                "label": "Beendet",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Finished",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.804Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:52.618Z",
+                "cmf_id": 562,
+                "cmf_name": "workflow-info",
+                "cmf_type": "textBox",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Info"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217516731,
+                        "labels": [
+                            {
+                                "label": "Started at 2026-03-27 13:40:29\nSuccessfully finished at 2026-03-27 13:40:30\n",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.804Z"
+                    }
+                ]
+            }
+        ],
+        "createUserId": 190505,
+        "updateUserId": 190496,
+        "finished": true
+    },
+    {
+        "uuid": "47afb052668043ff814c137a02ad3445",
+        "filenameSource": "b7233b5238560abf1b5cf8076ab02c80",
+        "fileExt": "jpg",
+        "createTimeStamp": "2026-03-27T12:40:16.748Z",
+        "md5source": "b7233b5238560abf1b5cf8076ab02c80",
+        "lastChangeTimeStamp": "2026-03-28T02:18:10.325Z",
+        "uniqueId": "882561_3uPyFwi3k8qdwhFrV4HQAT",
+        "fileName": "b7233b5238560abf1b5cf8076ab02c80.jpg",
+        "title": "70022245_O6",
+        "language": "##",
+        "clipType": -1,
+        "categories": [
+            {
+                "id": 408719,
+                "parentId": 324724,
+                "type": "asset",
+                "name": "A10-Mood",
+                "titles": [
+                    {
+                        "value": "A10-Mood",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Image-Classification/A10-Mood"
+            },
+            {
+                "id": 664419,
+                "parentId": 664480,
+                "type": "asset",
+                "name": "GPT-API-processed",
+                "titles": [
+                    {
+                        "value": "GPT-API-processed",
+                        "language": "de"
+                    }
+                ],
+                "activated": true,
+                "path": "Status/GPT-API-processed"
+            },
+            {
+                "id": 789660,
+                "parentId": 781613,
+                "type": "directory",
+                "name": "Erg\u00e4nzung 7000169-001",
+                "titles": [
+                    {
+                        "value": "Erg\u00e4nzung 7000169-001",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Asset Import/PCM-Import/7000169-001/Erg\u00e4nzung 7000169-001"
+            }
+        ],
+        "gema": false,
+        "validFrom": "2026-03-27T12:40:14.000Z",
+        "rating": 99,
+        "resolution": "1200x1400",
+        "duration": 0,
+        "fps": 0,
+        "properties": [
+            {
+                "key": "md5-source",
+                "value": "b7233b5238560abf1b5cf8076ab02c80",
+                "language": "##"
+            },
+            {
+                "key": "filename-source",
+                "value": "b7233b5238560abf1b5cf8076ab02c80.jpg",
+                "language": "##"
+            },
+            {
+                "key": "language",
+                "value": "##",
+                "language": "##"
+            },
+            {
+                "key": "title",
+                "value": "70022245_O6",
+                "language": "##"
+            },
+            {
+                "key": "format",
+                "value": "jpg",
+                "language": "##"
+            },
+            {
+                "key": "resolution",
+                "value": "1200x1400",
+                "language": "##"
+            },
+            {
+                "key": "filesize-source",
+                "value": "870275",
+                "language": "##"
+            }
+        ],
+        "products": [
+            {
+                "title": "70022245",
+                "uniqueId": "882561_3uPyFwi3k8qdwhFrV4HQAT",
+                "requestKey": "70022245",
+                "keyType": 100
+            }
+        ],
+        "activated": true,
+        "fileSize": 870275,
+        "importTime": "2026-03-27T12:40:16.748Z",
+        "fileType": "Picture",
+        "links": [
+            {
+                "valid_to": "2026-05-15T12:25:11.000Z",
+                "location": "https://ia2.mycliplister.com/is/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/47afb052668043ff814c137a02ad3445",
+                "fileType": "jpg",
+                "name": "iapi",
+                "fileSize": 870275,
+                "linkResolution": "1200x1400"
+            },
+            {
+                "valid_to": "2026-05-15T12:24:11.000Z",
+                "location": "https://ia2.mycliplister.com/asrc/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/47afb052668043ff814c137a02ad3445",
+                "fileType": "jpg",
+                "name": "source",
+                "fileSize": 870275,
+                "linkResolution": "1200x1400"
+            }
+        ],
+        "processStatus": {
+            "currentStep": "Published"
+        },
+        "cluserId": 88256,
+        "customMeta": [
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.437Z",
+                "cmf_id": 486,
+                "cmf_name": "web_enabled",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Web Enabled"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998561,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.781Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.488Z",
+                "cmf_id": 487,
+                "cmf_name": "is_exempted_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Exempted Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998563,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.781Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.526Z",
+                "cmf_id": 488,
+                "cmf_name": "is_main_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Main Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998565,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            },
+                            {
+                                "label": "0",
+                                "lang": "zz"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.781Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T15:18:50.594Z",
+                "cmf_id": 490,
+                "cmf_name": "type",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Dokument Typ"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998591,
+                        "labels": [
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.781Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-11-14T10:54:12.152Z",
+                "cmf_id": 492,
+                "cmf_name": "lw_att_process_number",
+                "cmf_type": "textField",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Vorgangsnummer"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217591416,
+                        "labels": [
+                            {
+                                "label": "Erg\u00e4nzung 7000169-001",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.781Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T08:59:39.789Z",
+                "cmf_id": 560,
+                "cmf_name": "original/derivat",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Original/Derivat"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824502,
+                        "labels": [
+                            {
+                                "label": "Original",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Original",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.781Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:20.884Z",
+                "cmf_id": 561,
+                "cmf_name": "workflow-status",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Status"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824505,
+                        "labels": [
+                            {
+                                "label": "Beendet",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Finished",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.781Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:52.618Z",
+                "cmf_id": 562,
+                "cmf_name": "workflow-info",
+                "cmf_type": "textBox",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Info"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217516724,
+                        "labels": [
+                            {
+                                "label": "Started at 2026-03-27 13:40:29\nSuccessfully finished at 2026-03-27 13:40:29\n",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:09.781Z"
+                    }
+                ]
+            }
+        ],
+        "createUserId": 190505,
+        "updateUserId": 190496,
+        "finished": true
+    },
+    {
+        "uuid": "ea2b6d38ebb44c2ca2b80a65d6fe0b26",
+        "filenameSource": "6b82e9d4fca55b055f3a9ac7f1b15871",
+        "fileExt": "jpg",
+        "createTimeStamp": "2026-03-27T12:40:16.727Z",
+        "md5source": "6b82e9d4fca55b055f3a9ac7f1b15871",
+        "lastChangeTimeStamp": "2026-03-28T02:18:11.366Z",
+        "uniqueId": "88256bH8_jjJBN6x_Dom1d_hetmAT",
+        "fileName": "6b82e9d4fca55b055f3a9ac7f1b15871.jpg",
+        "title": "70022245_O4",
+        "language": "##",
+        "clipType": -1,
+        "categories": [
+            {
+                "id": 408719,
+                "parentId": 324724,
+                "type": "asset",
+                "name": "A10-Mood",
+                "titles": [
+                    {
+                        "value": "A10-Mood",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Image-Classification/A10-Mood"
+            },
+            {
+                "id": 789660,
+                "parentId": 781613,
+                "type": "directory",
+                "name": "Erg\u00e4nzung 7000169-001",
+                "titles": [
+                    {
+                        "value": "Erg\u00e4nzung 7000169-001",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Asset Import/PCM-Import/7000169-001/Erg\u00e4nzung 7000169-001"
+            },
+            {
+                "id": 664419,
+                "parentId": 664480,
+                "type": "asset",
+                "name": "GPT-API-processed",
+                "titles": [
+                    {
+                        "value": "GPT-API-processed",
+                        "language": "de"
+                    }
+                ],
+                "activated": true,
+                "path": "Status/GPT-API-processed"
+            }
+        ],
+        "gema": false,
+        "validFrom": "2026-03-27T12:40:14.000Z",
+        "rating": 99,
+        "resolution": "1200x1200",
+        "duration": 0,
+        "fps": 0,
+        "properties": [
+            {
+                "key": "filesize-source",
+                "value": "647314",
+                "language": "##"
+            },
+            {
+                "key": "filename-source",
+                "value": "6b82e9d4fca55b055f3a9ac7f1b15871.jpg",
+                "language": "##"
+            },
+            {
+                "key": "language",
+                "value": "##",
+                "language": "##"
+            },
+            {
+                "key": "title",
+                "value": "70022245_O4",
+                "language": "##"
+            },
+            {
+                "key": "format",
+                "value": "jpg",
+                "language": "##"
+            },
+            {
+                "key": "resolution",
+                "value": "1200x1200",
+                "language": "##"
+            },
+            {
+                "key": "md5-source",
+                "value": "6b82e9d4fca55b055f3a9ac7f1b15871",
+                "language": "##"
+            }
+        ],
+        "products": [
+            {
+                "title": "70022245",
+                "uniqueId": "88256bH8_jjJBN6x_Dom1d_hetmAT",
+                "requestKey": "70022245",
+                "keyType": 100
+            }
+        ],
+        "activated": true,
+        "fileSize": 647314,
+        "importTime": "2026-03-27T12:40:16.727Z",
+        "fileType": "Picture",
+        "links": [
+            {
+                "valid_to": "2026-05-15T12:25:11.000Z",
+                "location": "https://ia2.mycliplister.com/is/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/ea2b6d38ebb44c2ca2b80a65d6fe0b26",
+                "fileType": "jpg",
+                "name": "iapi",
+                "fileSize": 647314,
+                "linkResolution": "1200x1200"
+            },
+            {
+                "valid_to": "2026-05-15T12:24:11.000Z",
+                "location": "https://ia2.mycliplister.com/asrc/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/ea2b6d38ebb44c2ca2b80a65d6fe0b26",
+                "fileType": "jpg",
+                "name": "source",
+                "fileSize": 647314,
+                "linkResolution": "1200x1200"
+            }
+        ],
+        "processStatus": {
+            "currentStep": "Published"
+        },
+        "cluserId": 88256,
+        "customMeta": [
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.437Z",
+                "cmf_id": 486,
+                "cmf_name": "web_enabled",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Web Enabled"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998561,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.840Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.488Z",
+                "cmf_id": 487,
+                "cmf_name": "is_exempted_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Exempted Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998563,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.840Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.526Z",
+                "cmf_id": 488,
+                "cmf_name": "is_main_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Main Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998565,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            },
+                            {
+                                "label": "0",
+                                "lang": "zz"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.840Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T15:18:50.594Z",
+                "cmf_id": 490,
+                "cmf_name": "type",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Dokument Typ"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998591,
+                        "labels": [
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.840Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-11-14T10:54:12.152Z",
+                "cmf_id": 492,
+                "cmf_name": "lw_att_process_number",
+                "cmf_type": "textField",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Vorgangsnummer"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217591427,
+                        "labels": [
+                            {
+                                "label": "Erg\u00e4nzung 7000169-001",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.840Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T08:59:39.789Z",
+                "cmf_id": 560,
+                "cmf_name": "original/derivat",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Original/Derivat"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824502,
+                        "labels": [
+                            {
+                                "label": "Original",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Original",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.840Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:20.884Z",
+                "cmf_id": 561,
+                "cmf_name": "workflow-status",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Status"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824505,
+                        "labels": [
+                            {
+                                "label": "Beendet",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Finished",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.840Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:52.618Z",
+                "cmf_id": 562,
+                "cmf_name": "workflow-info",
+                "cmf_type": "textBox",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Info"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217516742,
+                        "labels": [
+                            {
+                                "label": "Started at 2026-03-27 13:40:31\nSuccessfully finished at 2026-03-27 13:40:31\n",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.840Z"
+                    }
+                ]
+            }
+        ],
+        "createUserId": 190505,
+        "updateUserId": 190496,
+        "finished": true
+    },
+    {
+        "uuid": "627a1404d1a54d3d93f501c12cc37523",
+        "filenameSource": "eb1dc51999b23e96c6ecb07be87c2b3a",
+        "fileExt": "jpg",
+        "createTimeStamp": "2026-03-27T12:40:16.658Z",
+        "md5source": "eb1dc51999b23e96c6ecb07be87c2b3a",
+        "lastChangeTimeStamp": "2026-03-28T02:18:11.380Z",
+        "uniqueId": "882561K0pIr_z3Yj8EGd48_jt4PAT",
+        "fileName": "eb1dc51999b23e96c6ecb07be87c2b3a.jpg",
+        "title": "70022231_O10",
+        "language": "##",
+        "clipType": -1,
+        "categories": [
+            {
+                "id": 789660,
+                "parentId": 781613,
+                "type": "directory",
+                "name": "Erg\u00e4nzung 7000169-001",
+                "titles": [
+                    {
+                        "value": "Erg\u00e4nzung 7000169-001",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Asset Import/PCM-Import/7000169-001/Erg\u00e4nzung 7000169-001"
+            },
+            {
+                "id": 408719,
+                "parentId": 324724,
+                "type": "asset",
+                "name": "A10-Mood",
+                "titles": [
+                    {
+                        "value": "A10-Mood",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Image-Classification/A10-Mood"
+            },
+            {
+                "id": 664419,
+                "parentId": 664480,
+                "type": "asset",
+                "name": "GPT-API-processed",
+                "titles": [
+                    {
+                        "value": "GPT-API-processed",
+                        "language": "de"
+                    }
+                ],
+                "activated": true,
+                "path": "Status/GPT-API-processed"
+            }
+        ],
+        "gema": false,
+        "validFrom": "2026-03-27T12:40:13.000Z",
+        "rating": 99,
+        "resolution": "2491x3823",
+        "duration": 0,
+        "fps": 0,
+        "properties": [
+            {
+                "key": "md5-source",
+                "value": "eb1dc51999b23e96c6ecb07be87c2b3a",
+                "language": "##"
+            },
+            {
+                "key": "filesize-source",
+                "value": "1818062",
+                "language": "##"
+            },
+            {
+                "key": "resolution",
+                "value": "2491x3823",
+                "language": "##"
+            },
+            {
+                "key": "format",
+                "value": "jpg",
+                "language": "##"
+            },
+            {
+                "key": "title",
+                "value": "70022231_O10",
+                "language": "##"
+            },
+            {
+                "key": "language",
+                "value": "##",
+                "language": "##"
+            },
+            {
+                "key": "filename-source",
+                "value": "eb1dc51999b23e96c6ecb07be87c2b3a.jpg",
+                "language": "##"
+            }
+        ],
+        "products": [
+            {
+                "title": "70022231",
+                "uniqueId": "882561K0pIr_z3Yj8EGd48_jt4PAT",
+                "requestKey": "70022231",
+                "keyType": 100
+            }
+        ],
+        "activated": true,
+        "fileSize": 1818062,
+        "importTime": "2026-03-27T12:40:16.658Z",
+        "fileType": "Picture",
+        "links": [
+            {
+                "valid_to": "2026-05-15T12:25:11.000Z",
+                "location": "https://ia2.mycliplister.com/is/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/627a1404d1a54d3d93f501c12cc37523",
+                "fileType": "jpg",
+                "name": "iapi",
+                "fileSize": 1818062,
+                "linkResolution": "2491x3823"
+            },
+            {
+                "valid_to": "2026-05-15T12:24:11.000Z",
+                "location": "https://ia2.mycliplister.com/asrc/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/627a1404d1a54d3d93f501c12cc37523",
+                "fileType": "jpg",
+                "name": "source",
+                "fileSize": 1818062,
+                "linkResolution": "2491x3823"
+            }
+        ],
+        "processStatus": {
+            "currentStep": "Published"
+        },
+        "cluserId": 88256,
+        "customMeta": [
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.437Z",
+                "cmf_id": 486,
+                "cmf_name": "web_enabled",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Web Enabled"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998561,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.873Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.488Z",
+                "cmf_id": 487,
+                "cmf_name": "is_exempted_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Exempted Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998563,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.873Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.526Z",
+                "cmf_id": 488,
+                "cmf_name": "is_main_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Main Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998565,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            },
+                            {
+                                "label": "0",
+                                "lang": "zz"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.873Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T15:18:50.594Z",
+                "cmf_id": 490,
+                "cmf_name": "type",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Dokument Typ"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998591,
+                        "labels": [
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.873Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-11-14T10:54:12.152Z",
+                "cmf_id": 492,
+                "cmf_name": "lw_att_process_number",
+                "cmf_type": "textField",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Vorgangsnummer"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217591428,
+                        "labels": [
+                            {
+                                "label": "Erg\u00e4nzung 7000169-001",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.873Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T08:59:39.789Z",
+                "cmf_id": 560,
+                "cmf_name": "original/derivat",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Original/Derivat"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824502,
+                        "labels": [
+                            {
+                                "label": "Original",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Original",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.873Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:20.884Z",
+                "cmf_id": 561,
+                "cmf_name": "workflow-status",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Status"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824505,
+                        "labels": [
+                            {
+                                "label": "Beendet",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Finished",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.873Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:52.618Z",
+                "cmf_id": 562,
+                "cmf_name": "workflow-info",
+                "cmf_type": "textBox",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Info"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217516733,
+                        "labels": [
+                            {
+                                "label": "Started at 2026-03-27 13:40:30\nSuccessfully finished at 2026-03-27 13:40:30\n",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.873Z"
+                    }
+                ]
+            }
+        ],
+        "createUserId": 190505,
+        "updateUserId": 190496,
+        "finished": true
+    },
+    {
+        "uuid": "29de197903154ceaa671fbb6d0f59bdd",
+        "filenameSource": "94a8fd1ceaab67a75683aee29dc12cf5",
+        "fileExt": "jpg",
+        "createTimeStamp": "2026-03-27T12:40:16.625Z",
+        "md5source": "94a8fd1ceaab67a75683aee29dc12cf5",
+        "lastChangeTimeStamp": "2026-03-28T02:18:11.392Z",
+        "uniqueId": "88256agJMhgOxNxU8ryrXDa2L_1AT",
+        "fileName": "94a8fd1ceaab67a75683aee29dc12cf5.jpg",
+        "title": "70013950_O2",
+        "language": "##",
+        "clipType": -1,
+        "categories": [
+            {
+                "id": 789660,
+                "parentId": 781613,
+                "type": "directory",
+                "name": "Erg\u00e4nzung 7000169-001",
+                "titles": [
+                    {
+                        "value": "Erg\u00e4nzung 7000169-001",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Asset Import/PCM-Import/7000169-001/Erg\u00e4nzung 7000169-001"
+            },
+            {
+                "id": 664419,
+                "parentId": 664480,
+                "type": "asset",
+                "name": "GPT-API-processed",
+                "titles": [
+                    {
+                        "value": "GPT-API-processed",
+                        "language": "de"
+                    }
+                ],
+                "activated": true,
+                "path": "Status/GPT-API-processed"
+            },
+            {
+                "id": 408719,
+                "parentId": 324724,
+                "type": "asset",
+                "name": "A10-Mood",
+                "titles": [
+                    {
+                        "value": "A10-Mood",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Image-Classification/A10-Mood"
+            }
+        ],
+        "gema": false,
+        "validFrom": "2026-03-27T12:40:13.000Z",
+        "rating": 99,
+        "resolution": "4000x6000",
+        "duration": 0,
+        "fps": 0,
+        "properties": [
+            {
+                "key": "filename-source",
+                "value": "94a8fd1ceaab67a75683aee29dc12cf5.jpg",
+                "language": "##"
+            },
+            {
+                "key": "md5-source",
+                "value": "94a8fd1ceaab67a75683aee29dc12cf5",
+                "language": "##"
+            },
+            {
+                "key": "filesize-source",
+                "value": "12346649",
+                "language": "##"
+            },
+            {
+                "key": "resolution",
+                "value": "4000x6000",
+                "language": "##"
+            },
+            {
+                "key": "format",
+                "value": "jpg",
+                "language": "##"
+            },
+            {
+                "key": "title",
+                "value": "70013950_O2",
+                "language": "##"
+            },
+            {
+                "key": "language",
+                "value": "##",
+                "language": "##"
+            }
+        ],
+        "products": [
+            {
+                "title": "70013950",
+                "uniqueId": "88256agJMhgOxNxU8ryrXDa2L_1AT",
+                "requestKey": "70013950",
+                "keyType": 100
+            }
+        ],
+        "activated": true,
+        "fileSize": 12346649,
+        "importTime": "2026-03-27T12:40:16.625Z",
+        "fileType": "Picture",
+        "links": [
+            {
+                "valid_to": "2026-05-15T12:25:11.000Z",
+                "location": "https://ia2.mycliplister.com/is/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/29de197903154ceaa671fbb6d0f59bdd",
+                "fileType": "jpg",
+                "name": "iapi",
+                "fileSize": 12346649,
+                "linkResolution": "4000x6000"
+            },
+            {
+                "valid_to": "2026-05-15T12:24:11.000Z",
+                "location": "https://ia2.mycliplister.com/asrc/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/29de197903154ceaa671fbb6d0f59bdd",
+                "fileType": "jpg",
+                "name": "source",
+                "fileSize": 12346649,
+                "linkResolution": "4000x6000"
+            }
+        ],
+        "processStatus": {
+            "currentStep": "Published"
+        },
+        "cluserId": 88256,
+        "customMeta": [
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.437Z",
+                "cmf_id": 486,
+                "cmf_name": "web_enabled",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Web Enabled"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998561,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.887Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.488Z",
+                "cmf_id": 487,
+                "cmf_name": "is_exempted_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Exempted Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998563,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.887Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.526Z",
+                "cmf_id": 488,
+                "cmf_name": "is_main_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Main Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998565,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            },
+                            {
+                                "label": "0",
+                                "lang": "zz"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.887Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T15:18:50.594Z",
+                "cmf_id": 490,
+                "cmf_name": "type",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Dokument Typ"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998591,
+                        "labels": [
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.887Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-11-14T10:54:12.152Z",
+                "cmf_id": 492,
+                "cmf_name": "lw_att_process_number",
+                "cmf_type": "textField",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Vorgangsnummer"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217591429,
+                        "labels": [
+                            {
+                                "label": "Erg\u00e4nzung 7000169-001",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.887Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T08:59:39.789Z",
+                "cmf_id": 560,
+                "cmf_name": "original/derivat",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Original/Derivat"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824502,
+                        "labels": [
+                            {
+                                "label": "Original",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Original",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.887Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:20.884Z",
+                "cmf_id": 561,
+                "cmf_name": "workflow-status",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Status"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824505,
+                        "labels": [
+                            {
+                                "label": "Beendet",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Finished",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.887Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:52.618Z",
+                "cmf_id": 562,
+                "cmf_name": "workflow-info",
+                "cmf_type": "textBox",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Info"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217516732,
+                        "labels": [
+                            {
+                                "label": "Started at 2026-03-27 13:40:29\nSuccessfully finished at 2026-03-27 13:40:30\n",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.887Z"
+                    }
+                ]
+            }
+        ],
+        "createUserId": 190505,
+        "updateUserId": 190496,
+        "finished": true
+    },
+    {
+        "uuid": "908927670a914ee6ad28eedf5f4d8ccc",
+        "filenameSource": "6797a83f0f02e391f9db4323f40ea8e5",
+        "fileExt": "jpg",
+        "createTimeStamp": "2026-03-27T12:40:15.419Z",
+        "md5source": "6797a83f0f02e391f9db4323f40ea8e5",
+        "lastChangeTimeStamp": "2026-03-28T02:18:11.463Z",
+        "uniqueId": "882560u6uz9rzi837tLc_LQCofaAT",
+        "fileName": "6797a83f0f02e391f9db4323f40ea8e5.jpg",
+        "title": "70022230_O9",
+        "language": "##",
+        "clipType": -1,
+        "categories": [
+            {
+                "id": 789660,
+                "parentId": 781613,
+                "type": "directory",
+                "name": "Erg\u00e4nzung 7000169-001",
+                "titles": [
+                    {
+                        "value": "Erg\u00e4nzung 7000169-001",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Asset Import/PCM-Import/7000169-001/Erg\u00e4nzung 7000169-001"
+            },
+            {
+                "id": 664419,
+                "parentId": 664480,
+                "type": "asset",
+                "name": "GPT-API-processed",
+                "titles": [
+                    {
+                        "value": "GPT-API-processed",
+                        "language": "de"
+                    }
+                ],
+                "activated": true,
+                "path": "Status/GPT-API-processed"
+            },
+            {
+                "id": 408719,
+                "parentId": 324724,
+                "type": "asset",
+                "name": "A10-Mood",
+                "titles": [
+                    {
+                        "value": "A10-Mood",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Image-Classification/A10-Mood"
+            }
+        ],
+        "gema": false,
+        "validFrom": "2026-03-27T12:40:12.000Z",
+        "rating": 99,
+        "resolution": "4135x6202",
+        "duration": 0,
+        "fps": 0,
+        "properties": [
+            {
+                "key": "md5-source",
+                "value": "6797a83f0f02e391f9db4323f40ea8e5",
+                "language": "##"
+            },
+            {
+                "key": "filesize-source",
+                "value": "6164189",
+                "language": "##"
+            },
+            {
+                "key": "resolution",
+                "value": "4135x6202",
+                "language": "##"
+            },
+            {
+                "key": "format",
+                "value": "jpg",
+                "language": "##"
+            },
+            {
+                "key": "title",
+                "value": "70022230_O9",
+                "language": "##"
+            },
+            {
+                "key": "language",
+                "value": "##",
+                "language": "##"
+            },
+            {
+                "key": "filename-source",
+                "value": "6797a83f0f02e391f9db4323f40ea8e5.jpg",
+                "language": "##"
+            }
+        ],
+        "products": [
+            {
+                "title": "70022230",
+                "uniqueId": "882560u6uz9rzi837tLc_LQCofaAT",
+                "requestKey": "70022230",
+                "keyType": 100
+            }
+        ],
+        "activated": true,
+        "fileSize": 6164189,
+        "importTime": "2026-03-27T12:40:15.419Z",
+        "fileType": "Picture",
+        "links": [
+            {
+                "valid_to": "2026-05-15T12:25:11.000Z",
+                "location": "https://ia2.mycliplister.com/is/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/908927670a914ee6ad28eedf5f4d8ccc",
+                "fileType": "jpg",
+                "name": "iapi",
+                "fileSize": 6164189,
+                "linkResolution": "4135x6202"
+            },
+            {
+                "valid_to": "2026-05-15T12:24:11.000Z",
+                "location": "https://ia2.mycliplister.com/asrc/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/908927670a914ee6ad28eedf5f4d8ccc",
+                "fileType": "jpg",
+                "name": "source",
+                "fileSize": 6164189,
+                "linkResolution": "4135x6202"
+            }
+        ],
+        "processStatus": {
+            "currentStep": "Published"
+        },
+        "cluserId": 88256,
+        "customMeta": [
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.437Z",
+                "cmf_id": 486,
+                "cmf_name": "web_enabled",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Web Enabled"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998561,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.975Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.488Z",
+                "cmf_id": 487,
+                "cmf_name": "is_exempted_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Exempted Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998563,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.975Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.526Z",
+                "cmf_id": 488,
+                "cmf_name": "is_main_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Main Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998565,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            },
+                            {
+                                "label": "0",
+                                "lang": "zz"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.975Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T15:18:50.594Z",
+                "cmf_id": 490,
+                "cmf_name": "type",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Dokument Typ"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998591,
+                        "labels": [
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.975Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-11-14T10:54:12.152Z",
+                "cmf_id": 492,
+                "cmf_name": "lw_att_process_number",
+                "cmf_type": "textField",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Vorgangsnummer"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217591431,
+                        "labels": [
+                            {
+                                "label": "Erg\u00e4nzung 7000169-001",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.975Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T08:59:39.789Z",
+                "cmf_id": 560,
+                "cmf_name": "original/derivat",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Original/Derivat"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824502,
+                        "labels": [
+                            {
+                                "label": "Original",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Original",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.975Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:20.884Z",
+                "cmf_id": 561,
+                "cmf_name": "workflow-status",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Status"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824505,
+                        "labels": [
+                            {
+                                "label": "Beendet",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Finished",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.975Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:52.618Z",
+                "cmf_id": 562,
+                "cmf_name": "workflow-info",
+                "cmf_type": "textBox",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Info"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217516718,
+                        "labels": [
+                            {
+                                "label": "Started at 2026-03-27 13:40:26\nSuccessfully finished at 2026-03-27 13:40:27\n",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.975Z"
+                    }
+                ]
+            }
+        ],
+        "createUserId": 190505,
+        "updateUserId": 190496,
+        "finished": true
+    },
+    {
+        "uuid": "311f18cca96445f79adc944ffd58ae45",
+        "filenameSource": "38e76ee86cbf0b6c7ce7acbbd28fdf72",
+        "fileExt": "jpg",
+        "createTimeStamp": "2026-03-27T12:40:14.396Z",
+        "md5source": "38e76ee86cbf0b6c7ce7acbbd28fdf72",
+        "lastChangeTimeStamp": "2026-03-28T02:18:11.438Z",
+        "uniqueId": "882568rdSXz_JN_j7EPwqbPBsKQAT",
+        "fileName": "38e76ee86cbf0b6c7ce7acbbd28fdf72.jpg",
+        "title": "70022230_O10",
+        "language": "##",
+        "clipType": -1,
+        "categories": [
+            {
+                "id": 664419,
+                "parentId": 664480,
+                "type": "asset",
+                "name": "GPT-API-processed",
+                "titles": [
+                    {
+                        "value": "GPT-API-processed",
+                        "language": "de"
+                    }
+                ],
+                "activated": true,
+                "path": "Status/GPT-API-processed"
+            },
+            {
+                "id": 408719,
+                "parentId": 324724,
+                "type": "asset",
+                "name": "A10-Mood",
+                "titles": [
+                    {
+                        "value": "A10-Mood",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Image-Classification/A10-Mood"
+            },
+            {
+                "id": 789660,
+                "parentId": 781613,
+                "type": "directory",
+                "name": "Erg\u00e4nzung 7000169-001",
+                "titles": [
+                    {
+                        "value": "Erg\u00e4nzung 7000169-001",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Asset Import/PCM-Import/7000169-001/Erg\u00e4nzung 7000169-001"
+            }
+        ],
+        "gema": false,
+        "validFrom": "2026-03-27T12:40:11.000Z",
+        "rating": 99,
+        "resolution": "4076x6114",
+        "duration": 0,
+        "fps": 0,
+        "properties": [
+            {
+                "key": "language",
+                "value": "##",
+                "language": "##"
+            },
+            {
+                "key": "filename-source",
+                "value": "38e76ee86cbf0b6c7ce7acbbd28fdf72.jpg",
+                "language": "##"
+            },
+            {
+                "key": "title",
+                "value": "70022230_O10",
+                "language": "##"
+            },
+            {
+                "key": "format",
+                "value": "jpg",
+                "language": "##"
+            },
+            {
+                "key": "resolution",
+                "value": "4076x6114",
+                "language": "##"
+            },
+            {
+                "key": "filesize-source",
+                "value": "5500412",
+                "language": "##"
+            },
+            {
+                "key": "md5-source",
+                "value": "38e76ee86cbf0b6c7ce7acbbd28fdf72",
+                "language": "##"
+            }
+        ],
+        "products": [
+            {
+                "title": "70022230",
+                "uniqueId": "882568rdSXz_JN_j7EPwqbPBsKQAT",
+                "requestKey": "70022230",
+                "keyType": 100
+            }
+        ],
+        "activated": true,
+        "fileSize": 5500412,
+        "importTime": "2026-03-27T12:40:14.396Z",
+        "fileType": "Picture",
+        "links": [
+            {
+                "valid_to": "2026-05-15T12:25:11.000Z",
+                "location": "https://ia2.mycliplister.com/is/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/311f18cca96445f79adc944ffd58ae45",
+                "fileType": "jpg",
+                "name": "iapi",
+                "fileSize": 5500412,
+                "linkResolution": "4076x6114"
+            },
+            {
+                "valid_to": "2026-05-15T12:24:11.000Z",
+                "location": "https://ia2.mycliplister.com/asrc/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/311f18cca96445f79adc944ffd58ae45",
+                "fileType": "jpg",
+                "name": "source",
+                "fileSize": 5500412,
+                "linkResolution": "4076x6114"
+            }
+        ],
+        "processStatus": {
+            "currentStep": "Published"
+        },
+        "cluserId": 88256,
+        "customMeta": [
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.437Z",
+                "cmf_id": 486,
+                "cmf_name": "web_enabled",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Web Enabled"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998561,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.976Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.488Z",
+                "cmf_id": 487,
+                "cmf_name": "is_exempted_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Exempted Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998563,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.976Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.526Z",
+                "cmf_id": 488,
+                "cmf_name": "is_main_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Main Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998565,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            },
+                            {
+                                "label": "0",
+                                "lang": "zz"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.976Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T15:18:50.594Z",
+                "cmf_id": 490,
+                "cmf_name": "type",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Dokument Typ"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998591,
+                        "labels": [
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.976Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-11-14T10:54:12.152Z",
+                "cmf_id": 492,
+                "cmf_name": "lw_att_process_number",
+                "cmf_type": "textField",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Vorgangsnummer"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217591430,
+                        "labels": [
+                            {
+                                "label": "Erg\u00e4nzung 7000169-001",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.976Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T08:59:39.789Z",
+                "cmf_id": 560,
+                "cmf_name": "original/derivat",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Original/Derivat"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824502,
+                        "labels": [
+                            {
+                                "label": "Original",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Original",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.976Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:20.884Z",
+                "cmf_id": 561,
+                "cmf_name": "workflow-status",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Status"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824505,
+                        "labels": [
+                            {
+                                "label": "Beendet",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Finished",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.976Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:52.618Z",
+                "cmf_id": 562,
+                "cmf_name": "workflow-info",
+                "cmf_type": "textBox",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Info"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217516717,
+                        "labels": [
+                            {
+                                "label": "Started at 2026-03-27 13:40:26\nSuccessfully finished at 2026-03-27 13:40:26\n",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.976Z"
+                    }
+                ]
+            }
+        ],
+        "createUserId": 190505,
+        "updateUserId": 190496,
+        "finished": true
+    },
+    {
+        "uuid": "840e37211f254794a3efa345840153bd",
+        "filenameSource": "6d7350e1f71dd022bf7b319fd1b288d3",
+        "fileExt": "jpg",
+        "createTimeStamp": "2026-03-27T12:40:12.844Z",
+        "md5source": "6d7350e1f71dd022bf7b319fd1b288d3",
+        "lastChangeTimeStamp": "2026-03-28T02:18:11.476Z",
+        "uniqueId": "882567qo4icMX3Yn_OuH0SxMQJsAT",
+        "fileName": "6d7350e1f71dd022bf7b319fd1b288d3.jpg",
+        "title": "70016619_O2",
+        "language": "##",
+        "clipType": -1,
+        "categories": [
+            {
+                "id": 664419,
+                "parentId": 664480,
+                "type": "asset",
+                "name": "GPT-API-processed",
+                "titles": [
+                    {
+                        "value": "GPT-API-processed",
+                        "language": "de"
+                    }
+                ],
+                "activated": true,
+                "path": "Status/GPT-API-processed"
+            },
+            {
+                "id": 408719,
+                "parentId": 324724,
+                "type": "asset",
+                "name": "A10-Mood",
+                "titles": [
+                    {
+                        "value": "A10-Mood",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Image-Classification/A10-Mood"
+            },
+            {
+                "id": 789660,
+                "parentId": 781613,
+                "type": "directory",
+                "name": "Erg\u00e4nzung 7000169-001",
+                "titles": [
+                    {
+                        "value": "Erg\u00e4nzung 7000169-001",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Asset Import/PCM-Import/7000169-001/Erg\u00e4nzung 7000169-001"
+            }
+        ],
+        "gema": false,
+        "validFrom": "2026-03-27T12:40:09.000Z",
+        "rating": 99,
+        "resolution": "1080x1350",
+        "duration": 0,
+        "fps": 0,
+        "properties": [
+            {
+                "key": "title",
+                "value": "70016619_O2",
+                "language": "##"
+            },
+            {
+                "key": "filename-source",
+                "value": "6d7350e1f71dd022bf7b319fd1b288d3.jpg",
+                "language": "##"
+            },
+            {
+                "key": "language",
+                "value": "##",
+                "language": "##"
+            },
+            {
+                "key": "format",
+                "value": "jpg",
+                "language": "##"
+            },
+            {
+                "key": "resolution",
+                "value": "1080x1350",
+                "language": "##"
+            },
+            {
+                "key": "filesize-source",
+                "value": "694113",
+                "language": "##"
+            },
+            {
+                "key": "md5-source",
+                "value": "6d7350e1f71dd022bf7b319fd1b288d3",
+                "language": "##"
+            }
+        ],
+        "products": [
+            {
+                "title": "70016619",
+                "uniqueId": "882567qo4icMX3Yn_OuH0SxMQJsAT",
+                "requestKey": "70016619",
+                "keyType": 100
+            }
+        ],
+        "activated": true,
+        "fileSize": 694113,
+        "importTime": "2026-03-27T12:40:12.844Z",
+        "fileType": "Picture",
+        "links": [
+            {
+                "valid_to": "2026-05-15T12:25:11.000Z",
+                "location": "https://ia2.mycliplister.com/is/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/840e37211f254794a3efa345840153bd",
+                "fileType": "jpg",
+                "name": "iapi",
+                "fileSize": 694113,
+                "linkResolution": "1080x1350"
+            },
+            {
+                "valid_to": "2026-05-15T12:24:11.000Z",
+                "location": "https://ia2.mycliplister.com/asrc/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/840e37211f254794a3efa345840153bd",
+                "fileType": "jpg",
+                "name": "source",
+                "fileSize": 694113,
+                "linkResolution": "1080x1350"
+            }
+        ],
+        "processStatus": {
+            "currentStep": "Published"
+        },
+        "cluserId": 88256,
+        "customMeta": [
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.437Z",
+                "cmf_id": 486,
+                "cmf_name": "web_enabled",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Web Enabled"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998561,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.973Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.488Z",
+                "cmf_id": 487,
+                "cmf_name": "is_exempted_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Exempted Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998563,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.973Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.526Z",
+                "cmf_id": 488,
+                "cmf_name": "is_main_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Main Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998565,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            },
+                            {
+                                "label": "0",
+                                "lang": "zz"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.973Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T15:18:50.594Z",
+                "cmf_id": 490,
+                "cmf_name": "type",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Dokument Typ"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998591,
+                        "labels": [
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.973Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-11-14T10:54:12.152Z",
+                "cmf_id": 492,
+                "cmf_name": "lw_att_process_number",
+                "cmf_type": "textField",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Vorgangsnummer"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217591432,
+                        "labels": [
+                            {
+                                "label": "Erg\u00e4nzung 7000169-001",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.973Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T08:59:39.789Z",
+                "cmf_id": 560,
+                "cmf_name": "original/derivat",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Original/Derivat"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824502,
+                        "labels": [
+                            {
+                                "label": "Original",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Original",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.973Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:20.884Z",
+                "cmf_id": 561,
+                "cmf_name": "workflow-status",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Status"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824505,
+                        "labels": [
+                            {
+                                "label": "Beendet",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Finished",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.973Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:52.618Z",
+                "cmf_id": 562,
+                "cmf_name": "workflow-info",
+                "cmf_type": "textBox",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Info"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217516711,
+                        "labels": [
+                            {
+                                "label": "Started at 2026-03-27 13:40:18\nSuccessfully finished at 2026-03-27 13:40:18\n",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:10.973Z"
+                    }
+                ]
+            }
+        ],
+        "createUserId": 190505,
+        "updateUserId": 190496,
+        "finished": true
+    },
+    {
+        "uuid": "1c9589834d2a4244af99e9e6ab70d449",
+        "filenameSource": "7cd877fc4cf36eda9a6189019e2dd2b5",
+        "fileExt": "jpg",
+        "createTimeStamp": "2026-03-27T12:40:12.631Z",
+        "md5source": "7cd877fc4cf36eda9a6189019e2dd2b5",
+        "lastChangeTimeStamp": "2026-03-28T02:18:11.619Z",
+        "uniqueId": "882568Ka308liixt7NK0_gGNgNqAT",
+        "fileName": "7cd877fc4cf36eda9a6189019e2dd2b5.jpg",
+        "title": "70022231_O9",
+        "language": "##",
+        "clipType": -1,
+        "categories": [
+            {
+                "id": 789660,
+                "parentId": 781613,
+                "type": "directory",
+                "name": "Erg\u00e4nzung 7000169-001",
+                "titles": [
+                    {
+                        "value": "Erg\u00e4nzung 7000169-001",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Asset Import/PCM-Import/7000169-001/Erg\u00e4nzung 7000169-001"
+            },
+            {
+                "id": 664419,
+                "parentId": 664480,
+                "type": "asset",
+                "name": "GPT-API-processed",
+                "titles": [
+                    {
+                        "value": "GPT-API-processed",
+                        "language": "de"
+                    }
+                ],
+                "activated": true,
+                "path": "Status/GPT-API-processed"
+            },
+            {
+                "id": 408719,
+                "parentId": 324724,
+                "type": "asset",
+                "name": "A10-Mood",
+                "titles": [
+                    {
+                        "value": "A10-Mood",
+                        "language": "##"
+                    }
+                ],
+                "activated": true,
+                "path": "Image-Classification/A10-Mood"
+            }
+        ],
+        "gema": false,
+        "validFrom": "2026-03-27T12:40:09.000Z",
+        "rating": 99,
+        "resolution": "1080x1080",
+        "duration": 0,
+        "fps": 0,
+        "properties": [
+            {
+                "key": "md5-source",
+                "value": "7cd877fc4cf36eda9a6189019e2dd2b5",
+                "language": "##"
+            },
+            {
+                "key": "filesize-source",
+                "value": "557843",
+                "language": "##"
+            },
+            {
+                "key": "resolution",
+                "value": "1080x1080",
+                "language": "##"
+            },
+            {
+                "key": "format",
+                "value": "jpg",
+                "language": "##"
+            },
+            {
+                "key": "title",
+                "value": "70022231_O9",
+                "language": "##"
+            },
+            {
+                "key": "language",
+                "value": "##",
+                "language": "##"
+            },
+            {
+                "key": "filename-source",
+                "value": "7cd877fc4cf36eda9a6189019e2dd2b5.jpg",
+                "language": "##"
+            }
+        ],
+        "products": [
+            {
+                "title": "70022231",
+                "uniqueId": "882568Ka308liixt7NK0_gGNgNqAT",
+                "requestKey": "70022231",
+                "keyType": 100
+            }
+        ],
+        "activated": true,
+        "fileSize": 557843,
+        "importTime": "2026-03-27T12:40:12.631Z",
+        "fileType": "Picture",
+        "links": [
+            {
+                "valid_to": "2026-05-15T12:25:11.000Z",
+                "location": "https://ia2.mycliplister.com/is/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/1c9589834d2a4244af99e9e6ab70d449",
+                "fileType": "jpg",
+                "name": "iapi",
+                "fileSize": 557843,
+                "linkResolution": "1080x1080"
+            },
+            {
+                "valid_to": "2026-05-15T12:24:11.000Z",
+                "location": "https://ia2.mycliplister.com/asrc/88256/1ab836216f2054160a3352caa2b3208d4/c3/-/1c9589834d2a4244af99e9e6ab70d449",
+                "fileType": "jpg",
+                "name": "source",
+                "fileSize": 557843,
+                "linkResolution": "1080x1080"
+            }
+        ],
+        "processStatus": {
+            "currentStep": "Published"
+        },
+        "cluserId": 88256,
+        "customMeta": [
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.437Z",
+                "cmf_id": 486,
+                "cmf_name": "web_enabled",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Web Enabled"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998561,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:11.120Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.488Z",
+                "cmf_id": 487,
+                "cmf_name": "is_exempted_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Exempted Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998563,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:11.120Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T11:58:05.526Z",
+                "cmf_id": 488,
+                "cmf_name": "is_main_image",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Is Main Image"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998565,
+                        "labels": [
+                            {
+                                "label": "nein",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "no",
+                                "lang": "en"
+                            },
+                            {
+                                "label": "0",
+                                "lang": "zz"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:11.120Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-10-25T15:18:50.594Z",
+                "cmf_id": 490,
+                "cmf_name": "type",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Dokument Typ"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 7998591,
+                        "labels": [
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Produktbild Neutral",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:11.120Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2023-11-14T10:54:12.152Z",
+                "cmf_id": 492,
+                "cmf_name": "lw_att_process_number",
+                "cmf_type": "textField",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Vorgangsnummer"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217591433,
+                        "labels": [
+                            {
+                                "label": "Erg\u00e4nzung 7000169-001",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:11.120Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T08:59:39.789Z",
+                "cmf_id": 560,
+                "cmf_name": "original/derivat",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Original/Derivat"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824502,
+                        "labels": [
+                            {
+                                "label": "Original",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Original",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:11.120Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:20.884Z",
+                "cmf_id": 561,
+                "cmf_name": "workflow-status",
+                "cmf_type": "singleSelect",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Status"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 27824505,
+                        "labels": [
+                            {
+                                "label": "Beendet",
+                                "lang": "de"
+                            },
+                            {
+                                "label": "Finished",
+                                "lang": "en"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:11.120Z"
+                    }
+                ]
+            },
+            {
+                "createTimeStamp": "2024-01-31T09:01:52.618Z",
+                "cmf_id": 562,
+                "cmf_name": "workflow-info",
+                "cmf_type": "textBox",
+                "cmf_labels": [
+                    {
+                        "lang": "de",
+                        "label": ""
+                    },
+                    {
+                        "lang": "en",
+                        "label": "Workflow-Info"
+                    }
+                ],
+                "cmfvalues": [
+                    {
+                        "id": 217516710,
+                        "labels": [
+                            {
+                                "label": "Started at 2026-03-27 13:40:18\nSuccessfully finished at 2026-03-27 13:40:18\n",
+                                "lang": "##"
+                            }
+                        ],
+                        "createTimeStamp": "2026-03-28T02:18:11.120Z"
+                    }
+                ]
+            }
+        ],
+        "createUserId": 190505,
+        "updateUserId": 190496,
+        "finished": true
+    }
+]

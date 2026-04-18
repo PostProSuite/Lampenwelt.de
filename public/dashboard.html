@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PostPro Suite</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+
+<!-- ═══ APP ═══ -->
+<div class="app" id="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-text">PostPro Suite</div>
+      <div class="sidebar-logo-sub">LUQOM GROUP</div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <nav class="nav">
+      <a class="nav-item active" data-view="workflows" href="#">
+        <span class="nav-icon">▶</span> Workflows
+      </a>
+      <a class="nav-item" data-view="history" href="#">
+        <span class="nav-icon">📊</span> Exports
+      </a>
+      <a class="nav-item" data-view="settings" href="#">
+        <span class="nav-icon">⚙</span> Einstellungen
+      </a>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- HEADER -->
+    <div class="header">
+      <img class="header-logo-icon" src="/assets/logo/LUQOM-Icon.svg" alt="LUQOM">
+      <span class="header-title">PostPro Suite</span>
+      <span class="header-version">v1.0.0-Desktop</span>
+    </div>
+
+    <!-- ═══ VIEW: WORKFLOWS ═══ -->
+    <div class="view active" id="view-workflows">
+      <div class="wf-layout">
+        <!-- LEFT: Workflow Cards -->
+        <div class="wf-cards-col">
+          <div id="cards">
+            <div class="card" style="animation-delay:0s">
+              <div class="card-icon">⬇</div>
+              <div class="card-text">
+                <h3>Download RAW (SKU)</h3>
+                <p>Load images from DAM by SKU</p>
+              </div>
+              <span class="progress-percent" id="percent-0">0%</span>
+              <div class="progress-container" id="pbar-0">
+                <div class="progress-fill" id="pfill-0"></div>
+              </div>
+            </div>
+            <div class="rollout" id="rollout-0">
+              <div class="rollout-label">Request Key / SKU</div>
+              <div class="rollout-input-row">
+                <input class="rollout-input" id="input-0" placeholder="z. B. 10050196" onkeydown="if(event.key==='Enter') startWorkflow(0)">
+                <button class="rollout-start" onclick="startWorkflow(0)">Starten</button>
+              </div>
+              <div class="rollout-progress" id="rprogress-0"></div>
+              <div class="rollout-result" id="rresult-0"></div>
+              <div class="rollout-footer" id="rfooter-0">
+                <button class="rollout-copy hidden" id="copybtn-0" onclick="copyLog()">📋 Kopieren</button>
+                <button class="rollout-close" onclick="closeRollout(0)">Schliessen</button>
+              </div>
+            </div>
+
+            <div class="card" style="animation-delay:0.06s">
+              <div class="card-icon">⬇</div>
+              <div class="card-text">
+                <h3>Download RAW (Category ID)</h3>
+                <p>Load images from DAM by Category ID</p>
+              </div>
+              <span class="progress-percent" id="percent-1">0%</span>
+              <div class="progress-container" id="pbar-1">
+                <div class="progress-fill" id="pfill-1"></div>
+              </div>
+            </div>
+            <div class="rollout" id="rollout-1">
+              <div class="rollout-label">Category ID</div>
+              <div class="rollout-input-row">
+                <input class="rollout-input" id="input-1" placeholder="z. B. 591672" onkeydown="if(event.key==='Enter') startWorkflow(1)">
+                <button class="rollout-start" onclick="startWorkflow(1)">Starten</button>
+              </div>
+              <div class="rollout-progress" id="rprogress-1"></div>
+              <div class="rollout-result" id="rresult-1"></div>
+              <div class="rollout-footer" id="rfooter-1">
+                <button class="rollout-copy hidden" id="copybtn-1" onclick="copyLog()">📋 Kopieren</button>
+                <button class="rollout-close" onclick="closeRollout(1)">Schliessen</button>
+              </div>
+            </div>
+
+            <div class="card" style="animation-delay:0.12s">
+              <div class="card-icon">📁</div>
+              <div class="card-text">
+                <h3>Image Classification</h3>
+                <p>Sort, rename & classify images</p>
+              </div>
+              <span class="progress-percent" id="percent-2">0%</span>
+              <div class="progress-container" id="pbar-2">
+                <div class="progress-fill" id="pfill-2"></div>
+              </div>
+            </div>
+            <div class="rollout" id="rollout-2">
+              <div class="rollout-noinput">
+                <button class="rollout-start" onclick="startWorkflow(2)">Starten</button>
+              </div>
+              <div class="rollout-progress" id="rprogress-2"></div>
+              <div class="rollout-result" id="rresult-2"></div>
+              <div class="rollout-footer" id="rfooter-2">
+                <button class="rollout-copy hidden" id="copybtn-2" onclick="copyLog()">📋 Kopieren</button>
+                <button class="rollout-close" onclick="closeRollout(2)">Schliessen</button>
+              </div>
+            </div>
+
+            <div class="card" style="animation-delay:0.18s">
+              <div class="card-icon">✓</div>
+              <div class="card-text">
+                <h3>Jira Ticket Completion</h3>
+                <p>Update Jira ticket & close</p>
+              </div>
+              <span class="progress-percent" id="percent-3">0%</span>
+              <div class="progress-container" id="pbar-3">
+                <div class="progress-fill" id="pfill-3"></div>
+              </div>
+            </div>
+            <div class="rollout" id="rollout-3">
+              <div class="rollout-label">Ticket-Nummer</div>
+              <div class="rollout-input-row">
+                <input class="rollout-input" id="input-3" placeholder="z. B. 5175" onkeydown="if(event.key==='Enter') startWorkflow(3)">
+                <button class="rollout-start" onclick="startWorkflow(3)">Starten</button>
+              </div>
+              <div class="rollout-progress" id="rprogress-3"></div>
+              <div class="rollout-result" id="rresult-3"></div>
+              <div class="rollout-footer" id="rfooter-3">
+                <button class="rollout-copy hidden" id="copybtn-3" onclick="copyLog()">📋 Kopieren</button>
+                <button class="rollout-close" onclick="closeRollout(3)">Schliessen</button>
+              </div>
+            </div>
+
+            <div class="card" style="animation-delay:0.24s">
+              <div class="card-icon">☁</div>
+              <div class="card-text">
+                <h3>Upload to DAM</h3>
+                <p>Push images directly to DAM</p>
+              </div>
+              <span class="progress-percent" id="percent-4">0%</span>
+              <div class="progress-container" id="pbar-4">
+                <div class="progress-fill" id="pfill-4"></div>
+              </div>
+            </div>
+            <div class="rollout" id="rollout-4">
+              <div class="rollout-noinput">
+                <button class="rollout-start" onclick="startWorkflow(4)">Starten</button>
+              </div>
+              <div class="rollout-progress" id="rprogress-4"></div>
+              <div class="rollout-result" id="rresult-4"></div>
+              <div class="rollout-footer" id="rfooter-4">
+                <button class="rollout-copy hidden" id="copybtn-4" onclick="copyLog()">📋 Kopieren</button>
+                <button class="rollout-close" onclick="closeRollout(4)">Schliessen</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- RIGHT: Script Output -->
+        <div class="wf-log-col" id="logPanel">
+          <div class="log-content" id="logContent"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="status-bar">
+      <span class="status-label">Status:</span>
+      <span class="status-text" id="statusText">Bereit</span>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+let activeRollout = null;
+
+function onCardClick(id) {
+  if (activeRollout === id) { closeRollout(id); return; }
+  if (activeRollout !== null) closeRollout(activeRollout);
+
+  document.getElementById('rollout-' + id).classList.add('active');
+  activeRollout = id;
+
+  const input = document.getElementById('input-' + id);
+  if (input) setTimeout(() => input.focus(), 150);
+}
+
+function startWorkflow(id) {
+  const input = document.getElementById('input-' + id);
+  let value = null;
+  if (input && input.value) {
+    value = input.value.trim();
+  }
+
+  document.getElementById('statusText').textContent = 'Workflow läuft...';
+  document.getElementById('statusText').style.color = '#ff9f0a';
+
+  setTimeout(() => {
+    addLog('✓ Workflow ' + id + ' ausgeführt!');
+    addLog('Input: ' + (value || 'keine'));
+    document.getElementById('statusText').textContent = 'Bereit';
+    document.getElementById('statusText').style.color = '#fff';
+  }, 1000);
+}
+
+function closeRollout(id) {
+  document.getElementById('rollout-' + id).classList.remove('active');
+  if (activeRollout === id) activeRollout = null;
+}
+
+function addLog(text) {
+  const log = document.getElementById('logContent');
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.textContent = text;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+function copyLog() {
+  const log = document.getElementById('logContent').textContent;
+  navigator.clipboard.writeText(log);
+  alert('Log kopiert!');
+}
+
+// Navigation
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', (e) => {
+    e.preventDefault();
+    const view = item.dataset.view;
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+
+    if (view === 'workflows') {
+      document.getElementById('view-workflows').classList.add('active');
+    } else if (view === 'history') {
+      const histView = document.createElement('div');
+      histView.className = 'view active';
+      histView.innerHTML = '<div class="settings-section"><div class="settings-title">Exports</div><div class="admin-list"><div class="update-empty">Keine Exports gefunden</div></div></div>';
+      document.getElementById('view-workflows').parentElement.appendChild(histView);
+    }
+  });
+});
+
+console.log('✓ PostPro Suite Desktop lädt erfolgreich!');
+</script>
+</body>
+</html>

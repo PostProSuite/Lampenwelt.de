@@ -1,0 +1,667 @@
+"""
+04 Ticket abschliessen
+=====================
+Nimmt die bereits klassifizierten Bilder aus 01-Input RAW files
+(Unterordner wie A10-Mood, B20-Clipping, etc.) und:
+
+1) Benennt Dateien fuer Webshop um:  {SKU}_{Suffix}.jpg  (z.B. 8505786_A10.jpg)
+2) Setzt Keywords per exiftool basierend auf Ordnernamen
+3) Erstellt Excel-Report mit Bildmetadaten
+4) Aktualisiert Jira-Ticket (Bildcount, Zuweisung an Reporter, Transition QA)
+5) Kopiert alle umbenannten Bilder nach 03-Upload (fuer DAM-Upload)
+6) Speichert Ticket-Key fuer Upload-Script
+7) Raeumt 01-Input und 02-Webcheck auf
+"""
+
+import os
+import sys
+import shutil
+import re
+import logging
+import datetime
+import subprocess
+import hashlib
+from concurrent.futures import ThreadPoolExecutor
+from openpyxl import Workbook
+from PIL import Image
+from PIL.ExifTags import TAGS
+
+sys.path.insert(0, os.path.dirname(__file__))
+from _utils import (
+    load_config, setup_logging, get_paths,
+    validate_directory_exists
+)
+
+try:
+    from jira import JIRA
+except ImportError:
+    logger = logging.getLogger()
+    logger.error("jira package nicht installiert. Bitte: pip install jira")
+    sys.exit(1)
+
+# ============================================================
+# SETUP
+# ============================================================
+
+try:
+    config = load_config()
+    logger = setup_logging(config['LOG_FILE'], config['LOG_LEVEL'])
+except Exception as e:
+    print(f"FATAL: Konfiguration konnte nicht geladen werden: {e}")
+    sys.exit(1)
+
+paths = get_paths()
+workspace          = paths['workspace']
+input_path         = paths['input_batchfiles']   # 01-Input RAW files
+webcheck_path      = paths['web_check']           # 02-Webcheck
+upload_path        = paths['upload']               # 03-Upload
+# App-based exports directory (for download via web interface)
+excel_exports_path = "/Applications/XAMPP/xamppfiles/htdocs/postpro/data/exports"
+
+EXIFTOOL = os.environ.get(
+    'EXIFTOOL_PATH',
+    '/opt/homebrew/bin/exiftool' if os.path.exists('/opt/homebrew/bin/exiftool')
+    else '/usr/local/bin/exiftool'
+)
+
+# Jira
+jira_server = config['JIRA_SERVER']
+jira_email  = config['JIRA_EMAIL']
+jira_token  = config['JIRA_API_TOKEN']
+
+# SKU-Regex
+pattern = re.compile(r'\d{7,8}')
+
+# Bildformate
+IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.psd', '.gif', '.webp')
+
+# ── Ordner -> Keywords Mapping ───────────────────────────────
+FOLDER_KEYWORD_MAP = {
+    "A10-Mood":                ["Mood", "Ambiente"],
+    "B20-Clipping":            ["Freisteller", "Clipping"],
+    "B30-Dimensions":          ["Dimensions"],
+    "B40-Neutral":             ["Neutral"],
+    "C-Detail":                ["Detail"],
+    "C50-Shade":               ["Shade", "Detail"],
+    "C60-Material":            ["Material", "Detail"],
+    "C70-Switch":              ["Switch", "Detail"],
+    "C80-Base_Stand":          ["Base_Stand", "Detail"],
+    "C90-Cable":               ["Cable", "Detail"],
+    "C95-Split":               ["Split", "Detail"],
+    "D-Technical":             ["Technical"],
+    "D100-Lightsource_Socket": ["Technical", "Lightsource_Socket"],
+    "D110-Remote":             ["Technical", "Remote"],
+    "D120-Accesories":         ["Technical", "Accessories"],
+    "E130-Graphics":           ["Graphics"],
+    "E130-Graphics_DE":        ["Graphics", "DE"],
+    "E130-Graphics_INT":       ["Graphics", "INT"],
+    "E130-Graphics_ENG":       ["Graphics", "ENG"],
+    "F-Group":                 ["Group"],
+    "F140-Group":              ["Group"],
+    "G-UGC":                   ["UGC"],
+}
+
+# ── Ordner -> Datei-Suffix Mapping ───────────────────────────
+CATEGORY_SUFFIX_MAP = {
+    "A10-Mood":                "A10",
+    "B20-Clipping":            "B20",
+    "B30-Dimensions":          "B30",
+    "B40-Neutral":             "B40",
+    "C-Detail":                "C",
+    "C50-Shade":               "C50",
+    "C60-Material":            "C60",
+    "C70-Switch":              "C70",
+    "C80-Base_Stand":          "C80",
+    "C90-Cable":               "C90",
+    "C95-Split":               "C95",
+    "D-Technical":             "D",
+    "D100-Lightsource_Socket": "D100",
+    "D110-Remote":             "D110",
+    "D120-Accesories":         "D120",
+    "E130-Graphics":           "E130",
+    "E130-Graphics_DE":        "E130",
+    "E130-Graphics_INT":       "E130",
+    "E130-Graphics_ENG":       "E130",
+    "F-Group":                 "F140",
+    "F140-Group":              "F140",
+    "G-UGC":                   "G",
+}
+
+
+# ============================================================
+# PHASE 1: RENAME + KEYWORDS
+# ============================================================
+
+def process_and_rename_files():
+    """
+    Geht durch alle Unterordner in 02-Webcheck.
+    Fuer jede Datei:
+      - SKU aus Dateiname extrahieren
+      - Sequenzielle Nummern generieren PER ORDNER (1, 2, 3, ...)
+      - Datei umbenennen:  {SKU}_{Counter}.jpg   (z.B. 8505786_1.jpg, 8505786_2.jpg)
+      - Keywords per exiftool setzen basierend auf Ordnername
+    """
+    logger.info("Phase 1: Dateien umbenennen und Keywords setzen...")
+    renamed = 0
+    keyword_ok = 0
+    keyword_fail = 0
+
+    for root, dirs, files in os.walk(webcheck_path):
+        folder_name = os.path.basename(root)
+
+        # Keywords basierend auf Ordnername
+        keywords = FOLDER_KEYWORD_MAP.get(folder_name)
+
+        # Zaehler PRO ORDNER neu starten
+        folder_counters = {}
+
+        for filename in sorted(files):
+            if filename.startswith('.'):
+                continue
+            if not filename.lower().endswith(IMAGE_EXTS):
+                continue
+
+            file_path = os.path.join(root, filename)
+            sku_match = pattern.search(filename)
+
+            # --- Umbenennen mit sequenziellem Zaehler pro Ordner ---
+            if sku_match:
+                sku = sku_match.group(0)
+                ext = os.path.splitext(filename)[1]
+
+                # Zaehler fuer diese SKU im aktuellen Ordner inkrementieren
+                if sku not in folder_counters:
+                    folder_counters[sku] = 0
+                folder_counters[sku] += 1
+                counter = folder_counters[sku]
+
+                new_name = f"{sku}_{counter}{ext}"
+                new_path = os.path.join(root, new_name)
+
+                # Duplikat-Handling (Sicherheit): {SKU}_{Counter}_2.ext, etc.
+                collision_counter = 2
+                while os.path.exists(new_path) and new_path != file_path:
+                    base_name = f"{sku}_{counter}_{collision_counter}"
+                    new_name = f"{base_name}{ext}"
+                    new_path = os.path.join(root, new_name)
+                    collision_counter += 1
+
+                if new_path != file_path:
+                    try:
+                        os.rename(file_path, new_path)
+                        logger.info(f"Umbenannt: {filename} -> {new_name}")
+                        file_path = new_path
+                        renamed += 1
+                    except Exception as e:
+                        logger.warning(f"Rename-Fehler {filename}: {e}")
+
+            # --- Keywords per exiftool setzen ---
+            if keywords:
+                try:
+                    cmd = [EXIFTOOL, "-overwrite_original"]
+                    for kw in keywords:
+                        cmd.append(f"-XMP:Subject+={kw}")
+                    cmd.append(file_path)
+
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                    if result.returncode == 0:
+                        keyword_ok += 1
+                    else:
+                        keyword_fail += 1
+                        logger.warning(f"Exiftool-Fehler {os.path.basename(file_path)}: {result.stderr.strip()}")
+                except subprocess.TimeoutExpired:
+                    keyword_fail += 1
+                    logger.warning(f"Exiftool-Timeout: {os.path.basename(file_path)}")
+                except Exception as e:
+                    keyword_fail += 1
+                    logger.warning(f"Keyword-Fehler {os.path.basename(file_path)}: {e}")
+
+    logger.info(f"Phase 1: {renamed} umbenannt, Keywords: {keyword_ok} OK / {keyword_fail} Fehler")
+    return True
+
+
+# ============================================================
+# PHASE 2: COPY TO UPLOAD
+# ============================================================
+
+def copy_images_to_upload():
+    """
+    Kopiert alle Bilder aus 02-Webcheck (inkl. Unterordner) flach nach 03-Upload.
+    Die Bilder haben zu diesem Zeitpunkt schon die Webshop-Benennung
+    ({SKU}_{Counter}.jpg) aus Phase 1.
+    """
+    logger.info("Phase 2: Kopiere Bilder zu 03-Upload...")
+
+    try:
+        os.makedirs(upload_path, exist_ok=True)
+        copied = 0
+
+        for root, _, files in os.walk(webcheck_path):
+            for filename in sorted(files):
+                if filename.startswith('.'):
+                    continue
+                if not filename.lower().endswith(IMAGE_EXTS):
+                    continue
+
+                source = os.path.join(root, filename)
+                dest = os.path.join(upload_path, filename)
+
+                # Kollisions-Handling
+                if os.path.exists(dest):
+                    base, ext = os.path.splitext(filename)
+                    counter = 2
+                    while os.path.exists(dest):
+                        dest = os.path.join(upload_path, f"{base}_{counter}{ext}")
+                        counter += 1
+
+                try:
+                    shutil.copy2(source, dest)
+                    copied += 1
+                except Exception as e:
+                    logger.warning(f"Kopier-Fehler {filename}: {e}")
+
+        logger.info(f"Phase 2: {copied} Bilder nach 03-Upload kopiert")
+        return copied
+
+    except Exception as e:
+        logger.error(f"Fehler in Phase 2: {e}")
+        return 0
+
+
+# ============================================================
+# PHASE 2b: RENUMBER IMAGES IN UPLOAD (Pro SKU neu zaehlen)
+# ============================================================
+
+def renumber_images_in_upload():
+    """
+    Renumeriert alle Bilder im Upload-Ordner pro SKU.
+    Z.B. wenn 10055511_1.jpg und 10055511_4.jpg vorhanden sind,
+    werden sie zu 10055511_1.jpg und 10055511_2.jpg umbenannt.
+    """
+    logger.info("Phase 2b: Renumeriere Bilder im Upload-Ordner...")
+
+    try:
+        sku_counters = {}
+        renamed = 0
+
+        # Alle Dateien sammeln und sortieren
+        all_files = []
+        for filename in os.listdir(upload_path):
+            if filename.startswith('.'):
+                continue
+            if not filename.lower().endswith(IMAGE_EXTS):
+                continue
+            all_files.append(filename)
+
+        # Nach SKU und aktuellem Counter sortieren
+        all_files.sort()
+
+        for filename in all_files:
+            file_path = os.path.join(upload_path, filename)
+            if not os.path.isfile(file_path):
+                continue
+
+            sku_match = pattern.search(filename)
+            if not sku_match:
+                continue
+
+            sku = sku_match.group(0)
+            ext = os.path.splitext(filename)[1]
+
+            # Zaehler pro SKU inkrementieren
+            if sku not in sku_counters:
+                sku_counters[sku] = 0
+            sku_counters[sku] += 1
+            new_counter = sku_counters[sku]
+
+            new_name = f"{sku}_{new_counter}{ext}"
+            new_path = os.path.join(upload_path, new_name)
+
+            # Nur umbenennen wenn Namen unterschiedlich
+            if file_path != new_path and not os.path.exists(new_path):
+                try:
+                    os.rename(file_path, new_path)
+                    logger.info(f"Renumeriert: {filename} -> {new_name}")
+                    renamed += 1
+                except Exception as e:
+                    logger.warning(f"Renumerierungs-Fehler {filename}: {e}")
+
+        logger.info(f"Phase 2b: {renamed} Bilder renumeriert (pro SKU von _1 an)")
+        return renamed
+
+    except Exception as e:
+        logger.error(f"Fehler in Phase 2b: {e}")
+        return 0
+
+
+# ============================================================
+# PHASE 3: EXCEL REPORT
+# ============================================================
+
+def get_keywords_from_file(file_path):
+    """Keywords per exiftool aus Datei lesen."""
+    try:
+        result = subprocess.run(
+            [EXIFTOOL, "-keywords", "-XMP:Subject", file_path],
+            capture_output=True, text=True, timeout=5
+        )
+        kws = set()
+        for line in result.stdout.strip().split("\n"):
+            if ": " in line:
+                vals = line.split(": ", 1)[1]
+                for v in vals.split(", "):
+                    v = v.strip()
+                    if v:
+                        kws.add(v)
+        return sorted(kws)
+    except Exception:
+        return []
+
+
+def create_excel_report(ticket_key):
+    """Erstellt Excel-Report ueber alle Bilder in 01-Input."""
+    logger.info("Phase 3: Excel-Report erstellen...")
+    try:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Bilder"
+        ws.append([
+            'Dateiname', 'SKU', 'Kategorie', 'Keywords',
+            'Dateigr. (KB)', 'Aufnahmedatum', 'Aenderungsdatum',
+            'Breite', 'Hoehe', 'Aufloesung (MP)', 'MD5'
+        ])
+
+        sku_set = set()
+        total = 0
+
+        for root, dirs, files in os.walk(webcheck_path):
+            folder_name = os.path.basename(root)
+            for filename in sorted(files):
+                if filename.startswith('.'):
+                    continue
+                if not filename.lower().endswith(IMAGE_EXTS):
+                    continue
+
+                file_path = os.path.join(root, filename)
+                total += 1
+
+                sku_match = pattern.search(filename)
+                sku = sku_match.group(0) if sku_match else ""
+                if sku:
+                    sku_set.add(sku)
+
+                # Dateigroesse
+                size_kb = round(os.path.getsize(file_path) / 1024, 1)
+
+                # Datum
+                mod_date = datetime.datetime.fromtimestamp(
+                    os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M')
+
+                # Aufnahmedatum aus EXIF
+                capture_date = ""
+                if filename.lower().endswith(('.jpg', '.jpeg')):
+                    try:
+                        with Image.open(file_path) as img:
+                            exif = img._getexif()
+                            if exif:
+                                for tag_id, val in exif.items():
+                                    if TAGS.get(tag_id) == 'DateTimeOriginal':
+                                        capture_date = str(val)
+                                        break
+                    except Exception:
+                        pass
+
+                # Bildgroesse
+                px_w = px_h = mp = ""
+                try:
+                    with Image.open(file_path) as img:
+                        px_w, px_h = img.size
+                        mp = round((px_w * px_h) / 1_000_000, 2)
+                except Exception:
+                    pass
+
+                # Keywords
+                keywords = get_keywords_from_file(file_path)
+
+                # MD5
+                try:
+                    h = hashlib.md5()
+                    with open(file_path, 'rb') as f:
+                        for chunk in iter(lambda: f.read(8192), b""):
+                            h.update(chunk)
+                    md5 = h.hexdigest()
+                except Exception:
+                    md5 = ""
+
+                # Kategorie aus Ordnername
+                category = CATEGORY_SUFFIX_MAP.get(folder_name, folder_name)
+
+                ws.append([
+                    filename, sku, category, ", ".join(keywords),
+                    size_kb, capture_date, mod_date,
+                    px_w, px_h, mp, md5
+                ])
+
+        # SKU-Spalte als Zahl formatieren
+        for cell in ws['B'][1:]:
+            cell.number_format = '0'
+
+        os.makedirs(excel_exports_path, exist_ok=True)
+        excel_file = os.path.join(excel_exports_path, f"{ticket_key}.xlsx")
+        wb.save(excel_file)
+        logger.info(f"Excel-Report: {excel_file}")
+        logger.info(f"  {total} Bilder, {len(sku_set)} Artikel")
+        return total, len(sku_set)
+
+    except Exception as e:
+        logger.error(f"Fehler beim Excel-Report: {e}")
+        return 0, 0
+
+
+# ============================================================
+# PHASE 4: JIRA UPDATE
+# ============================================================
+
+def update_jira_ticket(ticket_key, image_count, article_count):
+    """
+    Jira-Ticket aktualisieren:
+    - customfield_10303 = Bildanzahl
+    - customfield_10299 = Artikelanzahl
+    - Assignee = Reporter (Ticket-Ersteller)
+    - Kommentar mit @Mention
+    - Transition auf 'QA'
+    """
+    try:
+        logger.info(f"Phase 4: Jira-Ticket {ticket_key} aktualisieren...")
+        jira = JIRA(options={'server': jira_server},
+                    basic_auth=(jira_email, jira_token))
+
+        issue = jira.issue(ticket_key)
+
+        # Reporter auslesen
+        reporter = issue.fields.reporter
+        reporter_id = reporter.accountId
+        reporter_name = reporter.displayName
+
+        # Felder aktualisieren + Ticket dem Reporter zuweisen
+        issue.update(fields={
+            'customfield_10303': image_count,
+            'customfield_10299': article_count,
+            'assignee': {'accountId': reporter_id}
+        })
+        logger.info(f"Ticket {ticket_key} zugewiesen an: {reporter_name}")
+
+        # Kommentar posten
+        comment = f"[~accountid:{reporter_id}] Upload Done"
+        jira.add_comment(ticket_key, comment)
+        logger.info(f"Kommentar gepostet: {comment}")
+
+        # Transition zu QA
+        transitions = jira.transitions(ticket_key)
+        transition_id = None
+        transition_name = None
+        for t in transitions:
+            if "qa" in t['name'].lower():
+                transition_id = t['id']
+                transition_name = t['name']
+                break
+
+        if transition_id:
+            jira.transition_issue(ticket_key, transition_id)
+            logger.info(f"Ticket auf '{transition_name}' gesetzt")
+        else:
+            available = [t['name'] for t in transitions]
+            logger.warning(f"Transition 'QA' nicht gefunden. Verfuegbar: {available}")
+
+        logger.info(f"Jira-Update OK: {image_count} Bilder, {article_count} Artikel")
+        return True
+
+    except Exception as e:
+        logger.error(f"Fehler beim Jira-Update: {e}")
+        return False
+
+
+# ============================================================
+# PHASE 5: CLEANUP
+# ============================================================
+
+def cleanup():
+    """Loescht nur Bilder aus 01-Input RAW files und 02-Webcheck, behaelt aber Ordnerstruktur."""
+    logger.info("Phase 5: Arbeitsordner aufraeumen...")
+    cleanup_dirs = [
+        ('01-Input RAW files', input_path),
+        ('02-Webcheck',        webcheck_path),
+    ]
+    total = 0
+    for name, folder in cleanup_dirs:
+        if not folder or not os.path.exists(folder):
+            continue
+
+        # Rekursiv durch alle Unterordner gehen
+        for root, dirs, files in os.walk(folder):
+            for file in files:
+                if file == '.DS_Store':
+                    continue
+                if file.lower().endswith(IMAGE_EXTS):
+                    file_path = os.path.join(root, file)
+                    try:
+                        os.unlink(file_path)
+                        total += 1
+                        logger.info(f"  Gelöscht: {file}")
+                    except Exception as e:
+                        logger.warning(f"Cleanup-Fehler {file}: {e}")
+
+        logger.info(f"  {name}: Bilder gelöscht, Ordnerstruktur erhalten")
+    logger.info(f"Phase 5: {total} Bilder aufgeraeumt")
+
+
+# ============================================================
+# MAIN
+# ============================================================
+
+if __name__ == "__main__":
+    try:
+        logger.info("=" * 70)
+        logger.info("04 Ticket abschliessen gestartet")
+        logger.info("=" * 70)
+
+        # Ticket-Nummer — App uebergibt via POSTPRO_INPUT, sonst Dialog
+        ticket_number = os.environ.get("POSTPRO_INPUT", "").strip()
+        if ticket_number:
+            if "-" in ticket_number:
+                ticket_number = ticket_number.split("-")[-1]
+        else:
+            while True:
+                result = subprocess.run(
+                    ['osascript', '-e',
+                     'text returned of (display dialog "Ticketnummer eingeben:" '
+                     'default answer "" with title "Ticket abschliessen")'],
+                    capture_output=True, text=True
+                )
+                if result.returncode != 0:
+                    logger.info("Durch Benutzer abgebrochen")
+                    sys.exit(0)
+                ticket_number = result.stdout.strip()
+                if ticket_number.isdigit():
+                    break
+                subprocess.run(
+                    ['osascript', '-e',
+                     'display alert "Ungueltige Eingabe" message '
+                     '"Die Ticketnummer darf nur Zahlen enthalten." as critical'],
+                    capture_output=True
+                )
+
+        ticket_key = f"CREAMEDIA-{ticket_number}"
+        logger.info(f"Ticket: {ticket_key}")
+        logger.info(f"Webcheck: {webcheck_path}")
+        logger.info(f"Upload:   {upload_path}")
+
+        # Pruefen ob Bilder vorhanden
+        image_count_check = 0
+        if os.path.exists(webcheck_path):
+            for r, d, f in os.walk(webcheck_path):
+                for fn in f:
+                    if not fn.startswith('.') and fn.lower().endswith(IMAGE_EXTS):
+                        image_count_check += 1
+
+        if image_count_check == 0:
+            logger.error("Keine Bilder in 02-Webcheck gefunden!")
+            logger.error(f"Pfad: {webcheck_path}")
+            print(f"FEHLER: Keine Bilder in 02-Webcheck!\nPfad: {webcheck_path}")
+            sys.exit(1)
+
+        logger.info(f"{image_count_check} Bilder in Input gefunden")
+
+        # Phase 1: Umbenennen + Keywords
+        process_and_rename_files()
+
+        # Phase 2: Kopiere nach 03-Upload
+        copied = copy_images_to_upload()
+        if copied == 0:
+            logger.warning("Keine Bilder kopiert!")
+
+        # Phase 2b: Renumeriere Bilder im Upload pro SKU
+        renumbered = renumber_images_in_upload()
+        logger.info(f"Renumeriert: {renumbered} Bilder")
+
+        # Phase 3: Excel-Report
+        img_count, art_count = create_excel_report(ticket_key)
+
+        # Phase 4: Jira aktualisieren
+        if jira_token and jira_email:
+            jira_ok = update_jira_ticket(ticket_key, img_count, art_count)
+            if not jira_ok:
+                subprocess.run(
+                    ['osascript', '-e',
+                     f'display alert "Jira-Update fehlgeschlagen" '
+                     f'message "Ticket {ticket_key} konnte nicht aktualisiert werden.'
+                     f'\\n\\nBitte manuell pruefen." as critical'],
+                    capture_output=True
+                )
+        else:
+            logger.warning("Jira-Credentials nicht konfiguriert")
+
+        # Phase 5: Cleanup
+        cleanup()
+
+        # Ticket-Key fuer Upload-Script speichern
+        try:
+            os.makedirs(upload_path, exist_ok=True)
+            ticket_file = os.path.join(upload_path, ".ticket_key")
+            with open(ticket_file, 'w') as f:
+                f.write(ticket_key)
+            logger.info(f"Ticket-Key gespeichert: {ticket_key}")
+        except Exception as e:
+            logger.warning(f"Fehler beim Speichern des Ticket-Keys: {e}")
+
+        logger.info("=" * 70)
+        logger.info(f"Ticket abschliessen fertig: {ticket_key}")
+        logger.info(f"  {img_count} Bilder, {art_count} Artikel -> 03-Upload")
+        logger.info("=" * 70)
+
+    except KeyboardInterrupt:
+        logger.info("Durch Benutzer abgebrochen")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Kritischer Fehler: {e}", exc_info=True)
+        sys.exit(1)
