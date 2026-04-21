@@ -175,6 +175,32 @@ body::after {
 .view.active{display:block;animation:viewIn .25s ease;}
 #view-workflows{padding:0 !important;overflow:hidden !important;}
 #view-workflows.active{display:flex !important;}
+#view-updates{padding:24px !important;flex-direction:column;overflow-y:auto !important;}
+#view-updates.active{display:flex !important;}
+.update-notification{border:1px solid rgba(255,100,100,.3);background:rgba(255,100,100,.08);border-radius:16px;padding:16px;margin-bottom:16px;color:#fff;}
+.update-notification .ntitle{font-weight:600;color:#ff6464;margin-bottom:8px;font-size:14px;}
+.update-notification .ndetails{font-size:13px;color:rgba(255,255,255,.7);margin-bottom:12px;line-height:1.5;}
+.update-notification button{margin-right:8px;margin-top:8px;padding:6px 12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:#fff;border-radius:6px;cursor:pointer;font-size:12px;}
+.update-notification button:hover{background:rgba(255,255,255,.1);}
+.version-box{border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.04);border-radius:16px;padding:16px;margin-bottom:16px;}
+.version-box > div{margin-bottom:12px;font-size:14px;}
+.version-box strong{color:#fff;font-weight:600;}
+.version-box button{padding:8px 16px;margin-top:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:#fff;border-radius:8px;cursor:pointer;font-size:13px;}
+.version-box button:hover{background:rgba(255,255,255,.1);}
+.download-progress{border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.04);border-radius:16px;padding:16px;margin-bottom:16px;display:none;}
+.progress-info{font-size:13px;color:rgba(255,255,255,.8);margin-bottom:12px;line-height:1.8;}
+.progress-bar{width:100%;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;margin-bottom:12px;}
+.progress-fill{height:100%;background:#3b82f6;width:0%;transition:width .2s linear;}
+.install-prompt{border:1px solid rgba(100,255,100,.2);background:rgba(100,255,100,.08);border-radius:16px;padding:16px;margin-bottom:16px;display:none;text-align:center;}
+.install-message{color:#4ade80;margin-bottom:12px;font-size:14px;}
+.install-prompt button{padding:8px 16px;margin-right:8px;margin-top:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:#fff;border-radius:8px;cursor:pointer;font-size:13px;}
+.install-prompt button:first-of-type{background:#3b82f6;}
+.install-prompt button:hover{background:rgba(255,255,255,.1);}
+.update-status{font-size:13px;color:rgba(255,255,255,.6);margin-bottom:16px;min-height:20px;}
+.update-log{border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.04);border-radius:16px;padding:16px;margin-top:16px;}
+.log-title{font-weight:600;color:#fff;margin-bottom:12px;font-size:13px;}
+.log-content{max-height:200px;overflow-y:auto;font-size:11px;font-family:monospace;color:rgba(255,255,255,.5);line-height:1.6;}
+.log-content > div{margin-bottom:4px;}
 @keyframes viewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── WORKFLOW LAYOUT ── */
@@ -519,6 +545,12 @@ body::after {
       </span>
       Exports
     </a>
+    <a class="nav-item" data-view="updates" href="#">
+      <span class="ni">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 9V6h2v3H7zm0 3v-1h2v1H7z"/></svg>
+      </span>
+      Updates
+    </a>
   </nav>
 
   <div class="sbf-block">
@@ -777,6 +809,56 @@ body::after {
     </div>
   </div>
 
+  <!-- UPDATES VIEW -->
+  <div class="view" id="view-updates">
+    <div class="section">
+      <div class="section-title">Updates Manager</div>
+
+      <!-- Update Notification (if update available) -->
+      <div id="update-notification" class="update-notification" style="display:none;">
+        <div class="ntitle">🔴 Update verfügbar: <span id="update-version"></span></div>
+        <div class="ndetails">Download: <span id="update-size"></span> MB</div>
+        <button onclick="checkForUpdates()">Nochmal Prüfen</button>
+        <button onclick="startDownload()">Jetzt Herunterladen</button>
+      </div>
+
+      <!-- Current Version Info -->
+      <div class="version-box">
+        <div>Aktuelle Version: <strong id="current-version">--</strong></div>
+        <button onclick="checkForUpdates()" id="check-btn">Nach Updates suchen</button>
+      </div>
+
+      <!-- Download Progress -->
+      <div id="download-progress" class="download-progress">
+        <div class="progress-info">
+          <div>Laden: <span id="progress-percent">0</span>%</div>
+          <div>Geschwindigkeit: <span id="progress-speed">0</span> MB/s</div>
+          <div>Verbleibend: <span id="progress-eta">--:--</span></div>
+        </div>
+        <div class="progress-bar">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+        <button onclick="cancelDownload()">Abbrechen</button>
+      </div>
+
+      <!-- Installation Prompt -->
+      <div id="install-prompt" class="install-prompt">
+        <div class="install-message">✓ Update heruntergeladen und bereit zur Installation</div>
+        <button onclick="installUpdate()">Jetzt Installieren</button>
+        <button onclick="resetUpdateState()">Später</button>
+      </div>
+
+      <!-- Status Messages -->
+      <div id="update-status" class="update-status"></div>
+
+      <!-- Update Log -->
+      <div id="update-log" class="update-log" style="display:none;">
+        <div class="log-title">Update-Verlauf</div>
+        <div id="log-content" class="log-content"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- STATUS BAR -->
   <div class="status-bar" id="statusBar">
     <span class="sdot" id="sdot"></span>
@@ -1002,8 +1084,14 @@ document.querySelectorAll('.nav-item').forEach(item => {
     item.classList.add('active');
     document.querySelectorAll('.view-dyn').forEach(v => v.remove());
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    if (item.dataset.view === 'workflows') {
-      document.getElementById('view-workflows').classList.add('active');
+    const viewId = 'view-' + item.dataset.view;
+    const viewEl = document.getElementById(viewId);
+    if (viewEl) {
+      viewEl.classList.add('active');
+      // Load update status if switching to updates view
+      if (item.dataset.view === 'updates') {
+        loadUpdateStatus();
+      }
     } else {
       const v = document.createElement('div');
       v.className = 'view view-dyn active'; v.style.padding = '18px';
@@ -1015,6 +1103,221 @@ document.querySelectorAll('.nav-item').forEach(item => {
 
 const cg = document.getElementById('cursorGlow');
 document.addEventListener('mousemove', e => { cg.style.left = e.clientX+'px'; cg.style.top = e.clientY+'px'; });
+
+// ═══ UPDATE MANAGEMENT ═══
+
+let updateCheckInProgress = false;
+let updateDownloadInProgress = false;
+
+// Initialize update listeners
+if (window.updateAPI) {
+  window.updateAPI.onUpdateAvailable((data) => {
+    console.log('📦 Update available:', data.version);
+    showUpdateNotification(data.version, (data.files?.[0]?.size || 0) / 1024 / 1024);
+  });
+
+  window.updateAPI.onUpdateStatus((data) => {
+    console.log('🔄 Update status:', data.state);
+    // Handle status updates from main process
+  });
+
+  window.updateAPI.onDownloadProgress((data) => {
+    if (data.percent !== undefined) {
+      updateProgressBar(data.percent, data.bytesPerSecond);
+    }
+  });
+
+  window.updateAPI.onUpdateError((data) => {
+    showUpdateStatus('error', '❌ Fehler: ' + data.error);
+  });
+}
+
+function getAppVersion() {
+  const pkg = fetch('/').then(r => r.text()).then(html => {
+    // For now, display version from DOM or fetch from API
+    return fetch('/api/user').then(r => r.json()).catch(() => ({version: '--'}));
+  });
+  return '--'; // Fallback
+}
+
+function showUpdateStatus(state, message) {
+  const statusEl = document.getElementById('update-status');
+  if (statusEl) {
+    statusEl.textContent = message;
+    // Show/hide relevant UI sections based on state
+    document.getElementById('download-progress').style.display = state === 'downloading' ? 'block' : 'none';
+    document.getElementById('install-prompt').style.display = state === 'downloaded' ? 'block' : 'none';
+  }
+
+  // Add to log
+  addUpdateLog(message);
+}
+
+function showUpdateNotification(version, sizeInMB) {
+  const notif = document.getElementById('update-notification');
+  if (notif) {
+    document.getElementById('update-version').textContent = version;
+    document.getElementById('update-size').textContent = sizeInMB.toFixed(1);
+    notif.style.display = 'block';
+    showUpdateStatus('available', `Update verfügbar: v${version}`);
+  }
+}
+
+function hideUpdateNotification() {
+  const notif = document.getElementById('update-notification');
+  if (notif) notif.style.display = 'none';
+}
+
+function updateProgressBar(percent, bytesPerSecond) {
+  document.getElementById('progress-percent').textContent = Math.round(percent);
+  document.getElementById('progress-fill').style.width = percent + '%';
+
+  const mbPerSec = (bytesPerSecond / 1024 / 1024).toFixed(1);
+  document.getElementById('progress-speed').textContent = mbPerSec;
+
+  // Rough ETA calculation (this would be better from main process)
+  addUpdateLog(`📥 Downloading: ${Math.round(percent)}% - ${mbPerSec} MB/s`);
+}
+
+function addUpdateLog(message) {
+  const logContent = document.getElementById('log-content');
+  if (logContent) {
+    const logEl = document.createElement('div');
+    logEl.textContent = new Date().toLocaleTimeString('de-DE') + ' ' + message;
+    logContent.appendChild(logEl);
+    logContent.parentElement.style.display = 'block';
+    logContent.scrollTop = logContent.scrollHeight;
+  }
+}
+
+async function checkForUpdates() {
+  if (updateCheckInProgress) return;
+  updateCheckInProgress = true;
+
+  showUpdateStatus('checking', '🔍 Prüfe auf Updates...');
+  hideUpdateNotification();
+
+  try {
+    const response = await fetch('/api/check-updates', {method: 'POST'});
+    const result = await response.json();
+
+    if (result.available) {
+      showUpdateNotification(result.version, result.downloadSize || 0);
+      addUpdateLog(`✓ Update verfügbar: v${result.version}`);
+    } else {
+      showUpdateStatus('idle', '✓ App ist aktuell');
+      hideUpdateNotification();
+      addUpdateLog('✓ Keine neuen Updates verfügbar');
+    }
+  } catch (err) {
+    showUpdateStatus('error', '❌ Fehler beim Prüfen: ' + err.message);
+    addUpdateLog(`❌ Fehler: ${err.message}`);
+  }
+
+  updateCheckInProgress = false;
+}
+
+async function startDownload() {
+  if (updateDownloadInProgress) return;
+  updateDownloadInProgress = true;
+
+  showUpdateStatus('downloading', '📥 Starte Download...');
+  document.getElementById('download-progress').style.display = 'block';
+  hideUpdateNotification();
+
+  try {
+    const response = await fetch('/api/download-update', {method: 'POST'});
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    addUpdateLog('📥 Download gestartet...');
+
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+
+      const text = decoder.decode(value);
+      const lines = text.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'log') {
+              addUpdateLog(data.text);
+            } else if (data.type === 'done') {
+              showUpdateStatus('downloaded', '✓ Update bereit zur Installation');
+              document.getElementById('download-progress').style.display = 'none';
+              document.getElementById('install-prompt').style.display = 'block';
+              addUpdateLog('✓ Download abgeschlossen');
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+      }
+    }
+  } catch (err) {
+    showUpdateStatus('error', '❌ Download-Fehler: ' + err.message);
+    document.getElementById('download-progress').style.display = 'none';
+    addUpdateLog(`❌ Download fehlgeschlagen: ${err.message}`);
+  }
+
+  updateDownloadInProgress = false;
+}
+
+async function installUpdate() {
+  showUpdateStatus('installing', '⚙️ Installiere Update... Die App wird neu gestartet.');
+  addUpdateLog('⚙️ Installiere Update - Neustart folgt...');
+
+  try {
+    await fetch('/api/install-update', {method: 'POST'});
+    // App will restart, so we don't need to do anything else
+  } catch (err) {
+    showUpdateStatus('error', '❌ Installations-Fehler: ' + err.message);
+    addUpdateLog(`❌ Installation fehlgeschlagen: ${err.message}`);
+  }
+}
+
+function cancelDownload() {
+  if (!updateDownloadInProgress) return;
+
+  showUpdateStatus('idle', 'Download abgebrochen');
+  document.getElementById('download-progress').style.display = 'none';
+  document.getElementById('progress-percent').textContent = '0';
+  document.getElementById('progress-fill').style.width = '0%';
+  addUpdateLog('⊘ Download abgebrochen');
+
+  fetch('/api/cancel-update', {method: 'POST'});
+  updateDownloadInProgress = false;
+}
+
+function resetUpdateState() {
+  hideUpdateNotification();
+  document.getElementById('download-progress').style.display = 'none';
+  document.getElementById('install-prompt').style.display = 'none';
+  showUpdateStatus('idle', '');
+  loadUpdateStatus();
+}
+
+async function loadUpdateStatus() {
+  try {
+    const response = await fetch('/api/update-status');
+    const status = await response.json();
+
+    // Update version display
+    const pkgVersion = (await fetch('./package.json').then(r => r.json()).catch(() => ({version: '--'}))).version;
+    document.getElementById('current-version').textContent = 'v' + pkgVersion;
+  } catch (err) {
+    console.error('Failed to load update status:', err);
+  }
+}
+
+// Load update status on page load
+document.addEventListener('DOMContentLoaded', () => {
+  loadUpdateStatus();
+  // Check for updates on startup (auto-check handled by main.js)
+});
 </script>
 </body>
 </html>

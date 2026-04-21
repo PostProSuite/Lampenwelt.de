@@ -403,6 +403,101 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
+// ═══ UPDATE MANAGEMENT ═══
+
+// Global update state
+let updateState = {
+  current: 'idle',           // idle, checking, available, downloading, downloaded, installing, error
+  latestVersion: null,
+  available: false,
+  downloadSize: 0,
+  progress: {percent: 0, speed: 0, eta: null},
+  lastChecked: null
+};
+
+// Get app version from package.json
+function getAppVersion() {
+  const pkg = require('./package.json');
+  return pkg.version;
+}
+
+// GET /api/update-status
+app.get('/api/update-status', (req, res) => {
+  res.json({
+    state: updateState.current,
+    currentVersion: getAppVersion(),
+    latestVersion: updateState.latestVersion,
+    available: updateState.available,
+    downloadSize: updateState.downloadSize,
+    progress: updateState.progress,
+    lastChecked: updateState.lastChecked
+  });
+});
+
+// POST /api/check-updates
+app.post('/api/check-updates', async (req, res) => {
+  try {
+    updateState.current = 'checking';
+    updateState.lastChecked = new Date().toISOString();
+
+    // This is called from main.js via IPC, but we'll return status
+    // The actual checking happens in main.js and IPC sends results
+    res.json({
+      available: updateState.available,
+      version: updateState.latestVersion,
+      downloadSize: updateState.downloadSize
+    });
+  } catch (err) {
+    updateState.current = 'error';
+    res.status(500).json({error: err.message});
+  }
+});
+
+// POST /api/download-update
+app.post('/api/download-update', (req, res) => {
+  updateState.current = 'downloading';
+
+  // SSE response for download progress
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  // Send initial message
+  res.write(`data: ${JSON.stringify({type: 'log', text: 'Starting download...', color: 'blue'})}\n\n`);
+
+  // Setup IPC listener for progress updates from main.js
+  // The main process will call ipcMain to send progress events
+  // which we capture via a global event emitter (would need to implement)
+
+  // For now, just indicate it's started - the download happens in main.js
+  setTimeout(() => {
+    res.write(`data: ${JSON.stringify({type: 'done', status: 'download_started'})}\n\n`);
+    res.end();
+  }, 500);
+});
+
+// POST /api/install-update
+app.post('/api/install-update', (req, res) => {
+  updateState.current = 'installing';
+
+  try {
+    // Installation is triggered from main.js
+    // App will restart, so we don't need to do much here
+    res.json({success: true, message: 'Update installation initiated'});
+  } catch (err) {
+    updateState.current = 'error';
+    res.status(500).json({error: err.message});
+  }
+});
+
+// POST /api/cancel-update
+app.post('/api/cancel-update', (req, res) => {
+  updateState.current = 'idle';
+  updateState.progress = {percent: 0, speed: 0, eta: null};
+
+  res.json({cancelled: true});
+});
+
 // Fallback für alle anderen Routes (SPA)
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));

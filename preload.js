@@ -1,5 +1,24 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+// Update API for checking and installing updates
+const updateAPI = {
+  onUpdateStatus: (callback) => {
+    ipcRenderer.on('update-status', (event, data) => callback(data));
+  },
+  onUpdateAvailable: (callback) => {
+    ipcRenderer.on('update-available', (event, data) => callback(data));
+  },
+  onDownloadProgress: (callback) => {
+    ipcRenderer.on('download-progress', (event, data) => callback(data));
+  },
+  onUpdateError: (callback) => {
+    ipcRenderer.on('update-error', (event, data) => callback(data));
+  },
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+};
+
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {
     send: (channel, data) => {
@@ -16,3 +35,6 @@ contextBridge.exposeInMainWorld('electron', {
     },
   },
 });
+
+// Expose update API to renderer
+contextBridge.exposeInMainWorld('updateAPI', updateAPI);

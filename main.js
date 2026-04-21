@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, dialog } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const http = require('http');
@@ -8,6 +8,7 @@ const Installer = require('./installer.js');
 let httpServer;
 
 let mainWindow;
+let updateAvailableInfo = null;
 
 // Check if user is configured
 function isUserConfigured() {
@@ -82,6 +83,18 @@ function startServer() {
   });
 }
 
+// Setup auto-update checking: on startup + every 24 hours
+function setupAutoUpdateCheck() {
+  // Check on app ready
+  autoUpdater.checkForUpdatesAndNotify();
+
+  // Check every 24 hours
+  setInterval(() => {
+    console.log('🔄 Auto-check für Updates (24h)...');
+    autoUpdater.checkForUpdatesAndNotify();
+  }, 24 * 60 * 60 * 1000);
+}
+
 app.on('ready', async () => {
   // First run setup
   try {
@@ -93,8 +106,8 @@ app.on('ready', async () => {
   await startServer();
   createWindow();
 
-  // Auto-Updates checken
-  autoUpdater.checkForUpdatesAndNotify();
+  // Setup auto-update checking
+  setupAutoUpdateCheck();
 });
 
 app.on('window-all-closed', () => {
@@ -110,21 +123,67 @@ app.on('activate', () => {
 });
 
 // Auto-Update Events
-autoUpdater.on('update-available', () => {
-  console.log('✓ Update verfügbar');
+autoUpdater.on('checking-for-update', () => {
+  console.log('🔍 Prüfe auf Updates...');
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', {state: 'checking'});
+  }
+});
+
+autoUpdater.on('update-available', (info) => {
+  console.log('✓ Update verfügbar:', info.version);
+  updateAvailableInfo = info;
+  if (mainWindow) {
+    mainWindow.webContents.send('update-available', {
+      version: info.version,
+      releaseDate: info.releaseDate,
+      files: info.files
+    });
+  }
+});
+
+autoUpdater.on('update-not-available', () => {
+  console.log('✓ App ist aktuell');
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', {state: 'idle'});
+  }
+});
+
+autoUpdater.on('download-progress', (progress) => {
+  console.log(`📥 Download: ${progress.percent.toFixed(1)}%`);
+  if (mainWindow) {
+    mainWindow.webContents.send('download-progress', {
+      percent: progress.percent,
+      bytesPerSecond: progress.bytesPerSecond,
+      transferred: progress.transferred,
+      total: progress.total
+    });
+  }
 });
 
 autoUpdater.on('update-downloaded', () => {
-  console.log('✓ Update heruntergeladen');
-  dialog.showMessageBox(mainWindow, {
-    type: 'info',
-    title: 'Update bereit',
-    message: 'PostPro Suite wurde aktualisiert.',
-    detail: 'Die neue Version ist bereit. Jetzt neu starten?',
-    buttons: ['Jetzt neu starten', 'Später'],
-    defaultId: 0,
-    cancelId: 1,
-  }).then(({ response }) => {
-    if (response === 0) autoUpdater.quitAndInstall();
-  });
+  console.log('✓ Update heruntergeladen und bereit zur Installation');
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', {state: 'downloaded'});
+  }
+});
+
+autoUpdater.on('error', (err) => {
+  console.error('❌ Update-Fehler:', err.message);
+  if (mainWindow) {
+    mainWindow.webContents.send('update-error', {error: err.message});
+  }
+});
+
+// IPC Handlers for update operations
+ipcMain.handle('check-for-updates', async () => {
+  return await autoUpdater.checkForUpdates();
+});
+
+ipcMain.handle('download-update', async () => {
+  autoUpdater.downloadUpdate();
+});
+
+ipcMain.handle('install-update', () => {
+  autoUpdater.quitAndInstall();
 });
