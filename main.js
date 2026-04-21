@@ -177,13 +177,49 @@ autoUpdater.on('error', (err) => {
 
 // IPC Handlers for update operations
 ipcMain.handle('check-for-updates', async () => {
-  return await autoUpdater.checkForUpdates();
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return {
+      success: true,
+      updateInfo: result ? result.updateInfo : null
+    };
+  } catch (err) {
+    console.error('checkForUpdates error:', err);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-error', {error: err.message});
+    }
+    return {success: false, error: err.message};
+  }
 });
 
 ipcMain.handle('download-update', async () => {
-  autoUpdater.downloadUpdate();
+  try {
+    // Ensure electron-updater has update info by checking first
+    const checkResult = await autoUpdater.checkForUpdates();
+    if (!checkResult || !checkResult.updateInfo) {
+      throw new Error('Kein Update verfügbar');
+    }
+    // Now start the actual download
+    await autoUpdater.downloadUpdate();
+    return {success: true};
+  } catch (err) {
+    console.error('downloadUpdate error:', err);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-error', {error: err.message});
+    }
+    throw err;
+  }
 });
 
 ipcMain.handle('install-update', () => {
-  autoUpdater.quitAndInstall();
+  try {
+    autoUpdater.quitAndInstall(false, true);
+    return {success: true};
+  } catch (err) {
+    console.error('installUpdate error:', err);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-error', {error: err.message});
+    }
+    return {success: false, error: err.message};
+  }
 });
