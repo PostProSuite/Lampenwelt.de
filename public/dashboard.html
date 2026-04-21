@@ -105,13 +105,20 @@ body::after {
 }
 .sb-icon {
   width:100%; aspect-ratio:1/1;
-  background:linear-gradient(135deg, rgba(74,143,212,.22), rgba(74,143,212,.06));
+  background:linear-gradient(135deg, rgba(74,143,212,.28), rgba(139,92,246,.12));
   border:none;
   border-radius:0;
   display:flex; align-items:center; justify-content:center;
-  box-shadow:inset 0 -1px 0 rgba(255,255,255,.04);
+  box-shadow:inset 0 -1px 0 rgba(255,255,255,.06), inset 0 0 60px rgba(74,143,212,.08);
+  transition:all .4s ease;
+  cursor:default;
 }
-.sb-icon svg{width:56%;height:56%;}
+.sb-icon:hover{
+  background:linear-gradient(135deg, rgba(74,143,212,.42), rgba(139,92,246,.22));
+  box-shadow:inset 0 -1px 0 rgba(255,255,255,.08), inset 0 0 80px rgba(74,143,212,.18), 0 0 24px rgba(74,143,212,.15);
+}
+.sb-icon svg{width:56%;height:56%;transition:transform .4s cubic-bezier(.22,1,.36,1);filter:drop-shadow(0 0 8px rgba(74,143,212,.3));}
+.sb-icon:hover svg{transform:scale(1.08) rotate(-3deg);filter:drop-shadow(0 0 12px rgba(74,143,212,.5));}
 .sb-name{font-size:13px;font-weight:700;letter-spacing:-.02em;color:var(--text);line-height:1.2;}
 .sb-group{font-size:9px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--text2);margin-top:2px;}
 
@@ -220,6 +227,9 @@ body::after {
 .error-box .emsg{color:#f87171;font-size:12px;margin-bottom:8px;}
 .error-box button{padding:6px 12px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#fff;border-radius:6px;cursor:pointer;font-size:11px;}
 .error-box button:hover{background:rgba(239,68,68,.25);}
+.toast{position:fixed;bottom:40px;right:20px;background:linear-gradient(135deg,rgba(34,197,94,.92),rgba(22,163,74,.88));color:#fff;padding:12px 18px;border-radius:12px;font-size:13px;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.1);z-index:9999;display:flex;align-items:center;gap:10px;transform:translateX(120%);transition:transform .5s cubic-bezier(.22,1,.36,1);max-width:340px;}
+.toast.show{transform:translateX(0);}
+.toast-icon{font-size:18px;}
 @keyframes viewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── WORKFLOW LAYOUT ── */
@@ -531,6 +541,7 @@ body::after {
 
 <div class="app" id="app">
 <div class="cursor-glow" id="cursorGlow"></div>
+<div class="toast" id="welcomeToast"><span class="toast-icon">🎉</span><span id="welcomeToastText">Willkommen!</span></div>
 
 <!-- SIDEBAR -->
 <aside class="sidebar">
@@ -1437,9 +1448,31 @@ function resetUpdateState() {
 
 // ── Initialization ──
 
+// Welcome toast after update
+async function checkAndShowWelcomeToast() {
+  try {
+    const status = await fetch('/api/update-status').then(r => r.json());
+    const currentVersion = status.currentVersion;
+    const lastSeenVersion = localStorage.getItem('lastSeenVersion');
+
+    if (lastSeenVersion && lastSeenVersion !== currentVersion) {
+      // Version changed - show welcome toast
+      const toast = document.getElementById('welcomeToast');
+      const text = document.getElementById('welcomeToastText');
+      text.textContent = `Update erfolgreich! Jetzt auf v${currentVersion}`;
+      setTimeout(() => toast.classList.add('show'), 800);
+      setTimeout(() => toast.classList.remove('show'), 6000);
+    }
+    localStorage.setItem('lastSeenVersion', currentVersion);
+  } catch (err) {
+    console.error('Welcome toast check failed:', err);
+  }
+}
+
 // Load update status on page load
 document.addEventListener('DOMContentLoaded', () => {
   loadUpdateStatus();
+  checkAndShowWelcomeToast();
 });
 
 // Refresh "last checked" timestamp every 30 seconds
