@@ -411,14 +411,73 @@ let updateState = {
   latestVersion: null,
   available: false,
   downloadSize: 0,
+  releaseNotes: '',
+  releaseDate: null,
   progress: {percent: 0, speed: 0, eta: null},
-  lastChecked: null
+  lastChecked: null,
+  error: null
 };
 
-// Get app version from package.json
+// GitHub repository info (from package.json)
+const GITHUB_OWNER = 'PostProSuite';
+const GITHUB_REPO = 'Lampenwelt.de';
+
+// Get app version from package.json (works in both dev and packaged)
 function getAppVersion() {
-  const pkg = require('./package.json');
-  return pkg.version;
+  try {
+    // In packaged app, package.json is inside app.asar (readable)
+    const pkg = require('./package.json');
+    return pkg.version;
+  } catch (err) {
+    return '0.0.0';
+  }
+}
+
+// Compare semantic versions: returns -1, 0, or 1
+function compareVersions(a, b) {
+  const parse = v => String(v).replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
+  const [a1, a2, a3] = parse(a);
+  const [b1, b2, b3] = parse(b);
+  if (a1 !== b1) return a1 < b1 ? -1 : 1;
+  if (a2 !== b2) return a2 < b2 ? -1 : 1;
+  if (a3 !== b3) return a3 < b3 ? -1 : 1;
+  return 0;
+}
+
+// Query GitHub API for latest release
+async function fetchLatestGitHubRelease() {
+  const https = require('https');
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'api.github.com',
+      path: `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`,
+      method: 'GET',
+      headers: {
+        'User-Agent': 'PostPro-Suite-Updater',
+        'Accept': 'application/vnd.github.v3+json'
+      },
+      timeout: 10000
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          if (res.statusCode === 200) {
+            resolve(JSON.parse(data));
+          } else {
+            reject(new Error(`GitHub API returned ${res.statusCode}`));
+          }
+        } catch (err) {
+          reject(err);
+        }
+      });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Request timeout')); });
+    req.end();
+  });
 }
 
 // GET /api/update-status
@@ -429,51 +488,69 @@ app.get('/api/update-status', (req, res) => {
     latestVersion: updateState.latestVersion,
     available: updateState.available,
     downloadSize: updateState.downloadSize,
+    releaseNotes: updateState.releaseNotes,
+    releaseDate: updateState.releaseDate,
     progress: updateState.progress,
-    lastChecked: updateState.lastChecked
+    lastChecked: updateState.lastChecked,
+    error: updateState.error
   });
 });
 
 // POST /api/check-updates
+// Actually queries GitHub API and compares versions
 app.post('/api/check-updates', async (req, res) => {
+  updateState.current = 'checking';
+  updateState.error = null;
+
   try {
-    updateState.current = 'checking';
+    const release = await fetchLatestGitHubRelease();
     updateState.lastChecked = new Date().toISOString();
 
-    // This is called from main.js via IPC, but we'll return status
-    // The actual checking happens in main.js and IPC sends results
+    const latestVersion = (release.tag_name || '').replace(/^v/, '');
+    const currentVersion = getAppVersion();
+    const comparison = compareVersions(currentVersion, latestVersion);
+
+    // Find DMG asset to get download size
+    const dmgAsset = (release.assets || []).find(a => a.name.endsWith('.dmg'));
+    const downloadSize = dmgAsset ? dmgAsset.size : 0;
+
+    updateState.latestVersion = latestVersion;
+    updateState.downloadSize = downloadSize;
+    updateState.releaseNotes = release.body || '';
+    updateState.releaseDate = release.published_at || null;
+
+    if (comparison < 0) {
+      // Current version is older than latest
+      updateState.available = true;
+      updateState.current = 'available';
+    } else {
+      updateState.available = false;
+      updateState.current = 'idle';
+    }
+
     res.json({
       available: updateState.available,
-      version: updateState.latestVersion,
-      downloadSize: updateState.downloadSize
+      currentVersion: currentVersion,
+      latestVersion: latestVersion,
+      downloadSize: downloadSize,
+      downloadSizeMB: (downloadSize / 1024 / 1024).toFixed(1),
+      releaseNotes: updateState.releaseNotes,
+      releaseDate: updateState.releaseDate,
+      lastChecked: updateState.lastChecked
     });
   } catch (err) {
     updateState.current = 'error';
-    res.status(500).json({error: err.message});
+    updateState.error = err.message;
+    res.status(500).json({error: err.message, lastChecked: updateState.lastChecked});
   }
 });
 
 // POST /api/download-update
+// Just triggers via flag - actual download handled by electron-updater via IPC
 app.post('/api/download-update', (req, res) => {
   updateState.current = 'downloading';
-
-  // SSE response for download progress
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-
-  // Send initial message
-  res.write(`data: ${JSON.stringify({type: 'log', text: 'Starting download...', color: 'blue'})}\n\n`);
-
-  // Setup IPC listener for progress updates from main.js
-  // The main process will call ipcMain to send progress events
-  // which we capture via a global event emitter (would need to implement)
-
-  // For now, just indicate it's started - the download happens in main.js
-  setTimeout(() => {
-    res.write(`data: ${JSON.stringify({type: 'done', status: 'download_started'})}\n\n`);
-    res.end();
-  }, 500);
+  updateState.progress = {percent: 0, speed: 0, eta: null};
+  res.json({success: true, message: 'Download triggered via IPC'});
 });
 
 // POST /api/install-update

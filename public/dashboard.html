@@ -177,30 +177,49 @@ body::after {
 #view-workflows.active{display:flex !important;}
 #view-updates{padding:24px !important;flex-direction:column;overflow-y:auto !important;}
 #view-updates.active{display:flex !important;}
-.update-notification{border:1px solid rgba(255,100,100,.3);background:rgba(255,100,100,.08);border-radius:16px;padding:16px;margin-bottom:16px;color:#fff;}
-.update-notification .ntitle{font-weight:600;color:#ff6464;margin-bottom:8px;font-size:14px;}
-.update-notification .ndetails{font-size:13px;color:rgba(255,255,255,.7);margin-bottom:12px;line-height:1.5;}
-.update-notification button{margin-right:8px;margin-top:8px;padding:6px 12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:#fff;border-radius:6px;cursor:pointer;font-size:12px;}
-.update-notification button:hover{background:rgba(255,255,255,.1);}
-.version-box{border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.04);border-radius:16px;padding:16px;margin-bottom:16px;}
-.version-box > div{margin-bottom:12px;font-size:14px;}
-.version-box strong{color:#fff;font-weight:600;}
-.version-box button{padding:8px 16px;margin-top:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:#fff;border-radius:8px;cursor:pointer;font-size:13px;}
-.version-box button:hover{background:rgba(255,255,255,.1);}
-.download-progress{border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.04);border-radius:16px;padding:16px;margin-bottom:16px;display:none;}
-.progress-info{font-size:13px;color:rgba(255,255,255,.8);margin-bottom:12px;line-height:1.8;}
-.progress-bar{width:100%;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;margin-bottom:12px;}
-.progress-fill{height:100%;background:#3b82f6;width:0%;transition:width .2s linear;}
-.install-prompt{border:1px solid rgba(100,255,100,.2);background:rgba(100,255,100,.08);border-radius:16px;padding:16px;margin-bottom:16px;display:none;text-align:center;}
-.install-message{color:#4ade80;margin-bottom:12px;font-size:14px;}
-.install-prompt button{padding:8px 16px;margin-right:8px;margin-top:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:#fff;border-radius:8px;cursor:pointer;font-size:13px;}
-.install-prompt button:first-of-type{background:#3b82f6;}
+.nav-item{position:relative;}
+.nav-badge{display:inline-block;width:8px;height:8px;background:#ef4444;border-radius:50%;margin-left:6px;box-shadow:0 0 10px rgba(239,68,68,.6);animation:badgePulse 1.6s ease-in-out infinite;}
+@keyframes badgePulse{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.3);opacity:.7;}}
+.update-notification{border:1px solid rgba(239,68,68,.35);background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(239,68,68,.04));border-radius:16px;padding:18px;margin-bottom:16px;color:#fff;animation:slideDown .4s cubic-bezier(.22,1,.36,1);}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+.update-notification .ntitle{font-weight:600;color:#ef4444;margin-bottom:6px;font-size:14px;display:flex;align-items:center;gap:6px;}
+.update-notification .ndetails{font-size:12px;color:rgba(255,255,255,.65);margin-bottom:10px;line-height:1.5;}
+.update-notification button{margin-right:8px;margin-top:6px;padding:7px 14px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;border-radius:8px;cursor:pointer;font-size:12px;transition:all .15s;}
+.update-notification button:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);}
+.update-notification button.primary{background:#ef4444;border-color:#ef4444;}
+.update-notification button.primary:hover{background:#dc2626;}
+.version-box{border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);border-radius:16px;padding:18px;margin-bottom:16px;}
+.version-box .vrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:rgba(255,255,255,.7);}
+.version-box .vrow strong{color:#fff;font-weight:600;}
+.version-box .vrow:last-of-type{margin-bottom:14px;}
+.version-box button{padding:8px 16px;border:1px solid rgba(255,255,255,.15);background:rgba(59,130,246,.12);color:#60a5fa;border-radius:8px;cursor:pointer;font-size:13px;transition:all .15s;font-weight:500;}
+.version-box button:hover{background:rgba(59,130,246,.2);border-color:rgba(59,130,246,.4);}
+.version-box button:disabled{opacity:.5;cursor:not-allowed;}
+.download-progress{border:1px solid rgba(59,130,246,.2);background:rgba(59,130,246,.05);border-radius:16px;padding:18px;margin-bottom:16px;display:none;}
+.progress-info{display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.75);margin-bottom:10px;}
+.progress-info > div{flex:1;}
+.progress-bar{width:100%;height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:12px;}
+.progress-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#60a5fa);width:0%;transition:width .2s linear;border-radius:3px;}
+.install-prompt{border:1px solid rgba(34,197,94,.3);background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(34,197,94,.03));border-radius:16px;padding:18px;margin-bottom:16px;display:none;text-align:center;animation:slideDown .4s cubic-bezier(.22,1,.36,1);}
+.install-message{color:#4ade80;margin-bottom:14px;font-size:14px;font-weight:500;}
+.install-prompt button{padding:9px 18px;margin:0 4px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;border-radius:8px;cursor:pointer;font-size:13px;transition:all .15s;}
+.install-prompt button.primary{background:#22c55e;border-color:#22c55e;font-weight:500;}
+.install-prompt button.primary:hover{background:#16a34a;}
 .install-prompt button:hover{background:rgba(255,255,255,.1);}
-.update-status{font-size:13px;color:rgba(255,255,255,.6);margin-bottom:16px;min-height:20px;}
-.update-log{border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.04);border-radius:16px;padding:16px;margin-top:16px;}
-.log-title{font-weight:600;color:#fff;margin-bottom:12px;font-size:13px;}
-.log-content{max-height:200px;overflow-y:auto;font-size:11px;font-family:monospace;color:rgba(255,255,255,.5);line-height:1.6;}
-.log-content > div{margin-bottom:4px;}
+.update-status{font-size:12px;color:rgba(255,255,255,.5);margin-bottom:14px;min-height:18px;display:flex;align-items:center;gap:8px;}
+.update-status.checking::before{content:"";display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.2);border-top-color:#60a5fa;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.release-notes{border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);border-radius:16px;padding:18px;margin-bottom:16px;display:none;}
+.release-notes-title{font-weight:600;color:#fff;margin-bottom:10px;font-size:13px;}
+.release-notes-content{font-size:12px;color:rgba(255,255,255,.65);line-height:1.7;max-height:260px;overflow-y:auto;white-space:pre-wrap;font-family:inherit;}
+.update-log{border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);border-radius:16px;padding:14px 18px;margin-top:16px;}
+.log-title{font-weight:600;color:#fff;margin-bottom:10px;font-size:12px;}
+.log-content{max-height:160px;overflow-y:auto;font-size:10.5px;font-family:ui-monospace,monospace;color:rgba(255,255,255,.45);line-height:1.6;}
+.log-content > div{margin-bottom:2px;}
+.error-box{border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);border-radius:12px;padding:12px;margin-bottom:14px;display:none;}
+.error-box .emsg{color:#f87171;font-size:12px;margin-bottom:8px;}
+.error-box button{padding:6px 12px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#fff;border-radius:6px;cursor:pointer;font-size:11px;}
+.error-box button:hover{background:rgba(239,68,68,.25);}
 @keyframes viewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── WORKFLOW LAYOUT ── */
@@ -545,11 +564,12 @@ body::after {
       </span>
       Exports
     </a>
-    <a class="nav-item" data-view="updates" href="#">
+    <a class="nav-item" data-view="updates" href="#" id="nav-updates">
       <span class="ni">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 9V6h2v3H7zm0 3v-1h2v1H7z"/></svg>
       </span>
       Updates
+      <span class="nav-badge" id="nav-updates-badge" style="display:none;"></span>
     </a>
   </nav>
 
@@ -816,24 +836,47 @@ body::after {
 
       <!-- Update Notification (if update available) -->
       <div id="update-notification" class="update-notification" style="display:none;">
-        <div class="ntitle">🔴 Update verfügbar: <span id="update-version"></span></div>
-        <div class="ndetails">Download: <span id="update-size"></span> MB</div>
+        <div class="ntitle">🔴 Update verfügbar: v<span id="update-version"></span></div>
+        <div class="ndetails">Download: <span id="update-size"></span> MB · <span id="update-release-date"></span></div>
         <button onclick="checkForUpdates()">Nochmal Prüfen</button>
-        <button onclick="startDownload()">Jetzt Herunterladen</button>
+        <button class="primary" onclick="startDownload()">Jetzt Herunterladen</button>
+      </div>
+
+      <!-- Error Box with Retry -->
+      <div id="error-box" class="error-box">
+        <div class="emsg" id="error-message"></div>
+        <button onclick="retryLastAction()">Nochmal versuchen</button>
       </div>
 
       <!-- Current Version Info -->
       <div class="version-box">
-        <div>Aktuelle Version: <strong id="current-version">--</strong></div>
+        <div class="vrow">
+          <span>Aktuelle Version</span>
+          <strong id="current-version">--</strong>
+        </div>
+        <div class="vrow">
+          <span>Zuletzt geprüft</span>
+          <strong id="last-checked">Noch nie</strong>
+        </div>
+        <div class="vrow">
+          <span>Status</span>
+          <strong id="version-status">Lade...</strong>
+        </div>
         <button onclick="checkForUpdates()" id="check-btn">Nach Updates suchen</button>
+      </div>
+
+      <!-- Release Notes -->
+      <div id="release-notes" class="release-notes">
+        <div class="release-notes-title">📝 Was ist neu in v<span id="notes-version"></span></div>
+        <div id="release-notes-content" class="release-notes-content"></div>
       </div>
 
       <!-- Download Progress -->
       <div id="download-progress" class="download-progress">
         <div class="progress-info">
-          <div>Laden: <span id="progress-percent">0</span>%</div>
-          <div>Geschwindigkeit: <span id="progress-speed">0</span> MB/s</div>
-          <div>Verbleibend: <span id="progress-eta">--:--</span></div>
+          <div>Laden: <strong><span id="progress-percent">0</span>%</strong></div>
+          <div>Geschwindigkeit: <strong><span id="progress-speed">0</span> MB/s</strong></div>
+          <div>Verbleibend: <strong><span id="progress-eta">--:--</span></strong></div>
         </div>
         <div class="progress-bar">
           <div id="progress-fill" class="progress-fill"></div>
@@ -844,7 +887,7 @@ body::after {
       <!-- Installation Prompt -->
       <div id="install-prompt" class="install-prompt">
         <div class="install-message">✓ Update heruntergeladen und bereit zur Installation</div>
-        <button onclick="installUpdate()">Jetzt Installieren</button>
+        <button class="primary" onclick="installUpdate()">Jetzt Installieren</button>
         <button onclick="resetUpdateState()">Später</button>
       </div>
 
@@ -1108,75 +1151,185 @@ document.addEventListener('mousemove', e => { cg.style.left = e.clientX+'px'; cg
 
 let updateCheckInProgress = false;
 let updateDownloadInProgress = false;
+let lastFailedAction = null;  // For retry button
 
-// Initialize update listeners
+// Initialize update listeners (IPC from main process)
 if (window.updateAPI) {
   window.updateAPI.onUpdateAvailable((data) => {
-    console.log('📦 Update available:', data.version);
-    showUpdateNotification(data.version, (data.files?.[0]?.size || 0) / 1024 / 1024);
+    console.log('📦 Update available (IPC):', data.version);
+    // When main process finds update via auto-check, refresh UI
+    checkForUpdates();
   });
 
   window.updateAPI.onUpdateStatus((data) => {
-    console.log('🔄 Update status:', data.state);
-    // Handle status updates from main process
+    console.log('🔄 Update status (IPC):', data.state);
+    if (data.state === 'downloaded') {
+      setUpdateState('downloaded');
+    }
   });
 
   window.updateAPI.onDownloadProgress((data) => {
     if (data.percent !== undefined) {
-      updateProgressBar(data.percent, data.bytesPerSecond);
+      updateProgressBar(data.percent, data.bytesPerSecond, data.transferred, data.total);
     }
   });
 
   window.updateAPI.onUpdateError((data) => {
-    showUpdateStatus('error', '❌ Fehler: ' + data.error);
+    showError('Update-Fehler: ' + data.error);
+    addUpdateLog('❌ ' + data.error);
   });
 }
 
-function getAppVersion() {
-  const pkg = fetch('/').then(r => r.text()).then(html => {
-    // For now, display version from DOM or fetch from API
-    return fetch('/api/user').then(r => r.json()).catch(() => ({version: '--'}));
-  });
-  return '--'; // Fallback
-}
+// ── UI State Helpers ──
 
-function showUpdateStatus(state, message) {
+function setUpdateState(state) {
+  // Hide all state-dependent UI
+  document.getElementById('update-notification').style.display = 'none';
+  document.getElementById('download-progress').style.display = 'none';
+  document.getElementById('install-prompt').style.display = 'none';
+  document.getElementById('error-box').style.display = 'none';
+
   const statusEl = document.getElementById('update-status');
-  if (statusEl) {
-    statusEl.textContent = message;
-    // Show/hide relevant UI sections based on state
-    document.getElementById('download-progress').style.display = state === 'downloading' ? 'block' : 'none';
-    document.getElementById('install-prompt').style.display = state === 'downloaded' ? 'block' : 'none';
+  statusEl.className = 'update-status';
+
+  // Show appropriate UI for state
+  switch (state) {
+    case 'checking':
+      statusEl.className = 'update-status checking';
+      statusEl.textContent = 'Prüfe auf Updates...';
+      document.getElementById('check-btn').disabled = true;
+      break;
+    case 'available':
+      document.getElementById('update-notification').style.display = 'block';
+      setNavBadge(true);
+      statusEl.textContent = '';
+      document.getElementById('check-btn').disabled = false;
+      break;
+    case 'downloading':
+      document.getElementById('download-progress').style.display = 'block';
+      statusEl.textContent = 'Download läuft…';
+      document.getElementById('check-btn').disabled = true;
+      break;
+    case 'downloaded':
+      document.getElementById('install-prompt').style.display = 'block';
+      setNavBadge(true);
+      statusEl.textContent = 'Update heruntergeladen - bereit zur Installation';
+      document.getElementById('check-btn').disabled = false;
+      break;
+    case 'installing':
+      statusEl.textContent = 'Installiere Update… App wird neu gestartet.';
+      document.getElementById('check-btn').disabled = true;
+      break;
+    case 'idle':
+    default:
+      setNavBadge(false);
+      statusEl.textContent = '';
+      document.getElementById('check-btn').disabled = false;
+      break;
   }
-
-  // Add to log
-  addUpdateLog(message);
 }
 
-function showUpdateNotification(version, sizeInMB) {
-  const notif = document.getElementById('update-notification');
-  if (notif) {
-    document.getElementById('update-version').textContent = version;
-    document.getElementById('update-size').textContent = sizeInMB.toFixed(1);
-    notif.style.display = 'block';
-    showUpdateStatus('available', `Update verfügbar: v${version}`);
+function setNavBadge(show) {
+  const badge = document.getElementById('nav-updates-badge');
+  if (badge) badge.style.display = show ? 'inline-block' : 'none';
+}
+
+function showError(message) {
+  const box = document.getElementById('error-box');
+  document.getElementById('error-message').textContent = message;
+  box.style.display = 'block';
+}
+
+function retryLastAction() {
+  document.getElementById('error-box').style.display = 'none';
+  if (lastFailedAction === 'check') checkForUpdates();
+  else if (lastFailedAction === 'download') startDownload();
+  else if (lastFailedAction === 'install') installUpdate();
+}
+
+// ── Version & Status Display ──
+
+function formatRelativeTime(isoString) {
+  if (!isoString) return 'Noch nie';
+  const now = new Date();
+  const then = new Date(isoString);
+  const diffMs = now - then;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffSec < 30) return 'gerade eben';
+  if (diffMin < 1) return 'vor wenigen Sekunden';
+  if (diffMin < 60) return `vor ${diffMin} Min.`;
+  if (diffHour < 24) return `vor ${diffHour} Std.`;
+  if (diffDay < 30) return `vor ${diffDay} Tag${diffDay === 1 ? '' : 'en'}`;
+  return then.toLocaleDateString('de-DE');
+}
+
+function formatReleaseDate(isoString) {
+  if (!isoString) return '';
+  return new Date(isoString).toLocaleDateString('de-DE', {day: 'numeric', month: 'short', year: 'numeric'});
+}
+
+async function loadUpdateStatus() {
+  try {
+    const response = await fetch('/api/update-status');
+    const status = await response.json();
+
+    document.getElementById('current-version').textContent = 'v' + status.currentVersion;
+    document.getElementById('last-checked').textContent = formatRelativeTime(status.lastChecked);
+
+    const versionStatus = document.getElementById('version-status');
+    if (status.available) {
+      versionStatus.textContent = '🔴 Update verfügbar (v' + status.latestVersion + ')';
+      versionStatus.style.color = '#ef4444';
+      setUpdateState('available');
+      showUpdateNotification(status.latestVersion, status.downloadSize, status.releaseDate);
+      showReleaseNotes(status.latestVersion, status.releaseNotes);
+    } else if (status.lastChecked) {
+      versionStatus.textContent = '✓ Aktuell';
+      versionStatus.style.color = '#4ade80';
+    } else {
+      versionStatus.textContent = 'Noch nicht geprüft';
+      versionStatus.style.color = 'rgba(255,255,255,.5)';
+    }
+  } catch (err) {
+    console.error('Failed to load update status:', err);
   }
 }
 
-function hideUpdateNotification() {
-  const notif = document.getElementById('update-notification');
-  if (notif) notif.style.display = 'none';
+function showUpdateNotification(version, sizeBytes, releaseDate) {
+  document.getElementById('update-version').textContent = version;
+  document.getElementById('update-size').textContent = (sizeBytes / 1024 / 1024).toFixed(1);
+  document.getElementById('update-release-date').textContent = formatReleaseDate(releaseDate);
 }
 
-function updateProgressBar(percent, bytesPerSecond) {
+function showReleaseNotes(version, notes) {
+  if (!notes) {
+    document.getElementById('release-notes').style.display = 'none';
+    return;
+  }
+  document.getElementById('notes-version').textContent = version;
+  document.getElementById('release-notes-content').textContent = notes;
+  document.getElementById('release-notes').style.display = 'block';
+}
+
+function updateProgressBar(percent, bytesPerSecond, transferred, total) {
   document.getElementById('progress-percent').textContent = Math.round(percent);
   document.getElementById('progress-fill').style.width = percent + '%';
 
-  const mbPerSec = (bytesPerSecond / 1024 / 1024).toFixed(1);
+  const mbPerSec = bytesPerSecond ? (bytesPerSecond / 1024 / 1024).toFixed(2) : '0';
   document.getElementById('progress-speed').textContent = mbPerSec;
 
-  // Rough ETA calculation (this would be better from main process)
-  addUpdateLog(`📥 Downloading: ${Math.round(percent)}% - ${mbPerSec} MB/s`);
+  // ETA calculation
+  if (bytesPerSecond && total && transferred) {
+    const remaining = total - transferred;
+    const secondsLeft = remaining / bytesPerSecond;
+    const min = Math.floor(secondsLeft / 60);
+    const sec = Math.floor(secondsLeft % 60);
+    document.getElementById('progress-eta').textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+  }
 }
 
 function addUpdateLog(message) {
@@ -1190,28 +1343,42 @@ function addUpdateLog(message) {
   }
 }
 
+// ── Core Actions ──
+
 async function checkForUpdates() {
   if (updateCheckInProgress) return;
   updateCheckInProgress = true;
-
-  showUpdateStatus('checking', '🔍 Prüfe auf Updates...');
-  hideUpdateNotification();
+  lastFailedAction = null;
+  setUpdateState('checking');
+  addUpdateLog('🔍 Prüfe GitHub auf neue Version…');
 
   try {
     const response = await fetch('/api/check-updates', {method: 'POST'});
     const result = await response.json();
 
+    if (!response.ok) throw new Error(result.error || 'Check fehlgeschlagen');
+
+    document.getElementById('last-checked').textContent = formatRelativeTime(result.lastChecked);
+
     if (result.available) {
-      showUpdateNotification(result.version, result.downloadSize || 0);
-      addUpdateLog(`✓ Update verfügbar: v${result.version}`);
+      setUpdateState('available');
+      showUpdateNotification(result.latestVersion, result.downloadSize, result.releaseDate);
+      showReleaseNotes(result.latestVersion, result.releaseNotes);
+      document.getElementById('version-status').textContent = '🔴 Update verfügbar (v' + result.latestVersion + ')';
+      document.getElementById('version-status').style.color = '#ef4444';
+      addUpdateLog(`✓ Neues Update gefunden: v${result.latestVersion} (${result.downloadSizeMB} MB)`);
     } else {
-      showUpdateStatus('idle', '✓ App ist aktuell');
-      hideUpdateNotification();
-      addUpdateLog('✓ Keine neuen Updates verfügbar');
+      setUpdateState('idle');
+      document.getElementById('version-status').textContent = '✓ Aktuell';
+      document.getElementById('version-status').style.color = '#4ade80';
+      document.getElementById('release-notes').style.display = 'none';
+      addUpdateLog('✓ App ist auf dem neuesten Stand');
     }
   } catch (err) {
-    showUpdateStatus('error', '❌ Fehler beim Prüfen: ' + err.message);
-    addUpdateLog(`❌ Fehler: ${err.message}`);
+    lastFailedAction = 'check';
+    setUpdateState('idle');
+    showError('Prüfen fehlgeschlagen: ' + err.message);
+    addUpdateLog(`❌ ${err.message}`);
   }
 
   updateCheckInProgress = false;
@@ -1220,104 +1387,83 @@ async function checkForUpdates() {
 async function startDownload() {
   if (updateDownloadInProgress) return;
   updateDownloadInProgress = true;
-
-  showUpdateStatus('downloading', '📥 Starte Download...');
-  document.getElementById('download-progress').style.display = 'block';
-  hideUpdateNotification();
+  lastFailedAction = null;
+  setUpdateState('downloading');
+  addUpdateLog('📥 Download gestartet…');
 
   try {
-    const response = await fetch('/api/download-update', {method: 'POST'});
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
+    // Signal server for state tracking
+    await fetch('/api/download-update', {method: 'POST'});
 
-    addUpdateLog('📥 Download gestartet...');
-
-    while (true) {
-      const {done, value} = await reader.read();
-      if (done) break;
-
-      const text = decoder.decode(value);
-      const lines = text.split('\n');
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === 'log') {
-              addUpdateLog(data.text);
-            } else if (data.type === 'done') {
-              showUpdateStatus('downloaded', '✓ Update bereit zur Installation');
-              document.getElementById('download-progress').style.display = 'none';
-              document.getElementById('install-prompt').style.display = 'block';
-              addUpdateLog('✓ Download abgeschlossen');
-            }
-          } catch (e) {
-            // Ignore parse errors
-          }
-        }
-      }
+    // Actually trigger download via IPC to main process (electron-updater)
+    if (window.updateAPI && window.updateAPI.downloadUpdate) {
+      await window.updateAPI.downloadUpdate();
+      // Progress updates will come via IPC listeners
+      // When complete, 'update-downloaded' event will fire → onUpdateStatus
+    } else {
+      throw new Error('Update API nicht verfügbar (nur in gepackter App)');
     }
   } catch (err) {
-    showUpdateStatus('error', '❌ Download-Fehler: ' + err.message);
-    document.getElementById('download-progress').style.display = 'none';
-    addUpdateLog(`❌ Download fehlgeschlagen: ${err.message}`);
+    lastFailedAction = 'download';
+    setUpdateState('available');
+    showError('Download fehlgeschlagen: ' + err.message);
+    addUpdateLog(`❌ ${err.message}`);
   }
 
   updateDownloadInProgress = false;
 }
 
 async function installUpdate() {
-  showUpdateStatus('installing', '⚙️ Installiere Update... Die App wird neu gestartet.');
-  addUpdateLog('⚙️ Installiere Update - Neustart folgt...');
+  lastFailedAction = null;
+  setUpdateState('installing');
+  addUpdateLog('⚙️ Installiere Update - Neustart folgt…');
 
   try {
     await fetch('/api/install-update', {method: 'POST'});
-    // App will restart, so we don't need to do anything else
+    // Trigger actual install via IPC
+    if (window.updateAPI && window.updateAPI.installUpdate) {
+      await window.updateAPI.installUpdate();
+    }
+    // App will restart
   } catch (err) {
-    showUpdateStatus('error', '❌ Installations-Fehler: ' + err.message);
-    addUpdateLog(`❌ Installation fehlgeschlagen: ${err.message}`);
+    lastFailedAction = 'install';
+    setUpdateState('downloaded');
+    showError('Installation fehlgeschlagen: ' + err.message);
+    addUpdateLog(`❌ ${err.message}`);
   }
 }
 
 function cancelDownload() {
   if (!updateDownloadInProgress) return;
-
-  showUpdateStatus('idle', 'Download abgebrochen');
-  document.getElementById('download-progress').style.display = 'none';
+  setUpdateState('available');
   document.getElementById('progress-percent').textContent = '0';
   document.getElementById('progress-fill').style.width = '0%';
   addUpdateLog('⊘ Download abgebrochen');
-
   fetch('/api/cancel-update', {method: 'POST'});
   updateDownloadInProgress = false;
 }
 
 function resetUpdateState() {
-  hideUpdateNotification();
-  document.getElementById('download-progress').style.display = 'none';
-  document.getElementById('install-prompt').style.display = 'none';
-  showUpdateStatus('idle', '');
+  setUpdateState('idle');
   loadUpdateStatus();
 }
 
-async function loadUpdateStatus() {
-  try {
-    const response = await fetch('/api/update-status');
-    const status = await response.json();
-
-    // Update version display
-    const pkgVersion = (await fetch('./package.json').then(r => r.json()).catch(() => ({version: '--'}))).version;
-    document.getElementById('current-version').textContent = 'v' + pkgVersion;
-  } catch (err) {
-    console.error('Failed to load update status:', err);
-  }
-}
+// ── Initialization ──
 
 // Load update status on page load
 document.addEventListener('DOMContentLoaded', () => {
   loadUpdateStatus();
-  // Check for updates on startup (auto-check handled by main.js)
 });
+
+// Refresh "last checked" timestamp every 30 seconds
+setInterval(() => {
+  fetch('/api/update-status').then(r => r.json()).then(s => {
+    if (s.lastChecked) {
+      const el = document.getElementById('last-checked');
+      if (el) el.textContent = formatRelativeTime(s.lastChecked);
+    }
+  }).catch(() => {});
+}, 30000);
 </script>
 </body>
 </html>
