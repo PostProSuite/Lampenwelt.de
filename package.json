@@ -7,7 +7,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "build": "rm -rf dist && electron-builder",
+    "build": "rm -rf dist && electron-builder && bash scripts/remove-codesign.sh",
     "delta": "node build-delta-updates.js",
     "build-release": "npm run build && npm run delta",
     "release": "npm run build-release -- --publish always",
