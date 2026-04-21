@@ -47,7 +47,10 @@
       ],
       "category": "public.app-category.business",
       "icon": "assets/icon.icns",
-      "artifactName": "PostPro-Suite-${version}-${arch}-mac.${ext}"
+      "artifactName": "PostPro-Suite-${version}-${arch}-mac.${ext}",
+      "sign": false,
+      "gatekeeperAssess": false,
+      "forceCodeSigning": false
     },
     "dmg": {
       "sign": false,
