@@ -3,6 +3,7 @@ const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
+const { execSync } = require('child_process');
 const expressApp = require('./server.js');
 const Installer = require('./installer.js');
 
@@ -205,6 +206,20 @@ app.on('activate', () => {
   }
 });
 
+// Helper: Remove quarantine attribute from downloaded app (macOS blocks unsigned apps from internet)
+function removeQuarantineFlag() {
+  try {
+    const cacheDir = path.join(app.getPath('cache'), 'com.postprosuite.app.ShipIt');
+    if (fs.existsSync(cacheDir)) {
+      // Find and remove quarantine flag from any downloaded app
+      execSync(`find "${cacheDir}" -name "PostPro Suite.app" -exec xattr -d com.apple.quarantine {} \\; 2>/dev/null || true`);
+      console.log('✓ Quarantine-Flag entfernt');
+    }
+  } catch (err) {
+    console.warn('⚠️ Konnte Quarantine-Flag nicht entfernen:', err.message);
+  }
+}
+
 // Auto-Update Events
 autoUpdater.on('checking-for-update', () => {
   console.log('🔍 Prüfe auf Updates...');
@@ -246,6 +261,8 @@ autoUpdater.on('download-progress', (progress) => {
 
 autoUpdater.on('update-downloaded', () => {
   console.log('✓ Update heruntergeladen und bereit zur Installation');
+  // Remove quarantine flag so macOS doesn't block the unsigned app
+  removeQuarantineFlag();
   if (mainWindow) {
     mainWindow.webContents.send('update-status', {state: 'downloaded'});
   }
@@ -302,6 +319,8 @@ ipcMain.handle('download-update', async () => {
 
 ipcMain.handle('install-update', () => {
   try {
+    // Remove quarantine flag before installing
+    removeQuarantineFlag();
     autoUpdater.quitAndInstall(false, true);
     return {success: true};
   } catch (err) {
@@ -311,4 +330,10 @@ ipcMain.handle('install-update', () => {
     }
     return {success: false, error: err.message};
   }
+});
+
+// Also remove quarantine flag before macOS tries to execute the updated app
+app.on('before-quit-for-update', () => {
+  console.log('🔓 Entferne Quarantine-Flag vor Update-Installation...');
+  removeQuarantineFlag();
 });
