@@ -24,6 +24,7 @@ import json
 import requests
 import paramiko
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from PIL import Image
 
 sys.path.insert(0, os.path.dirname(__file__))
 from _utils import (
@@ -69,6 +70,35 @@ def get_dam_headers():
 
 
 # ============================================================
+# IMAGE RESIZING
+# ============================================================
+
+def resize_image_to_1800(image_path):
+    """Resize image to max 1800x1800 pixels, maintaining aspect ratio."""
+    try:
+        img = Image.open(image_path)
+
+        # Get original dimensions
+        original_width, original_height = img.size
+
+        # If already smaller than 1800x1800, don't resize
+        if original_width <= 1800 and original_height <= 1800:
+            return True
+
+        # Calculate new dimensions maintaining aspect ratio
+        max_size = 1800
+        img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+
+        # Save resized image (overwrite original)
+        img.save(image_path, quality=95, optimize=True)
+        logger.info(f"Bild verkleinert: {image_path} ({original_width}x{original_height} → {img.size[0]}x{img.size[1]})")
+        return True
+    except Exception as e:
+        logger.error(f"Image-Resizing-Fehler {image_path}: {e}")
+        return False
+
+
+# ============================================================
 # SFTP UPLOAD
 # ============================================================
 
@@ -103,6 +133,9 @@ def upload_single_image(filepath, category_id):
     """Upload image to SFTP, then register with DAM via source-URL."""
     filename = os.path.basename(filepath)
     try:
+        # Step 0: Resize image to max 1800x1800
+        resize_image_to_1800(filepath)
+
         # Step 1: Upload to SFTP
         if not upload_to_sftp(filepath, filename):
             logger.warning(f"  SFTP-Upload fehlgeschlagen: {filename}")

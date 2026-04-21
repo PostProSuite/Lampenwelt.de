@@ -1,14 +1,17 @@
 {
   "name": "PostProSuite",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "PostPro Suite - Professional Image Processing Workflow",
   "main": "main.js",
   "homepage": "./",
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "build": "electron-builder",
-    "release": "npm run build -- --publish always"
+    "build": "rm -rf dist && electron-builder",
+    "delta": "node build-delta-updates.js",
+    "build-release": "npm run build && npm run delta",
+    "release": "npm run build-release -- --publish always",
+    "postrelease": "rm -rf dist node_modules && gh release list --repo PostProSuite/Lampenwelt.de --limit 50 --json tagName --jq '.[1:][].tagName' | xargs -I{} gh release delete {} --repo PostProSuite/Lampenwelt.de --yes --cleanup-tag"
   },
   "repository": {
     "type": "git",
@@ -27,11 +30,15 @@
     "files": [
       "main.js",
       "server.js",
+      "installer.js",
       "preload.js",
       "node_modules/**/*",
       "src/**/*",
       "public/**/*",
       "package.json"
+    ],
+    "asarUnpack": [
+      "src/**/*"
     ],
     "mac": {
       "target": [

@@ -55,8 +55,7 @@ workspace          = paths['workspace']
 input_path         = paths['input_batchfiles']   # 01-Input RAW files
 webcheck_path      = paths['web_check']           # 02-Webcheck
 upload_path        = paths['upload']               # 03-Upload
-# App-based exports directory (for download via web interface)
-excel_exports_path = "/Applications/XAMPP/xamppfiles/htdocs/postpro/data/exports"
+excel_exports_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "exports")
 
 EXIFTOOL = os.environ.get(
     'EXIFTOOL_PATH',
@@ -77,6 +76,10 @@ IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.psd', '.gif', '.webp')
 
 # ── Ordner -> Keywords Mapping ───────────────────────────────
 FOLDER_KEYWORD_MAP = {
+    # Webcheck-Ordner (02-Webcheck)
+    "01-Mainimage":            ["Freisteller", "Clipping"],
+    "02-Mood":                 ["Mood", "Ambiente"],
+    "03-Pos4-X":               [],
     "A10-Mood":                ["Mood", "Ambiente"],
     "B20-Clipping":            ["Freisteller", "Clipping"],
     "B30-Dimensions":          ["Dimensions"],
@@ -132,91 +135,142 @@ CATEGORY_SUFFIX_MAP = {
 # PHASE 1: RENAME + KEYWORDS
 # ============================================================
 
-def process_and_rename_files():
-    """
-    Geht durch alle Unterordner in 02-Webcheck.
-    Fuer jede Datei:
-      - SKU aus Dateiname extrahieren
-      - Sequenzielle Nummern generieren PER ORDNER (1, 2, 3, ...)
-      - Datei umbenennen:  {SKU}_{Counter}.jpg   (z.B. 8505786_1.jpg, 8505786_2.jpg)
-      - Keywords per exiftool setzen basierend auf Ordnername
-    """
-    logger.info("Phase 1: Dateien umbenennen und Keywords setzen...")
-    renamed = 0
-    keyword_ok = 0
-    keyword_fail = 0
+# Position-Logik:
+#   B20-Clipping  →  _1        (Mainimage, max 1 pro SKU)
+#   A10-Mood      →  _2, _3   (Mood, max 2 pro SKU)
+#   Alles andere  →  _4, _5, _6 … (Pos 4-x, zaehlt pro SKU uebergreifend)
 
-    for root, dirs, files in os.walk(webcheck_path):
+MAINIMAGE_FOLDER = "01-Mainimage"
+MOOD_FOLDER      = "02-Mood"
+MAINIMAGE_POS    = 1
+MOOD_START_POS   = 2
+MOOD_MAX         = 2
+OTHER_START_POS  = 4
+
+
+def _do_rename(folder, old_name, new_name):
+    """Datei umbenennen. Gibt neuen Pfad zurueck oder None bei Fehler."""
+    old_path = os.path.join(folder, old_name)
+    new_path = os.path.join(folder, new_name)
+    if old_path == new_path:
+        return new_path
+    # Kollisionsschutz
+    if os.path.exists(new_path):
+        base, ext = os.path.splitext(new_name)
+        c = 2
+        while os.path.exists(os.path.join(folder, f"{base}_{c}{ext}")):
+            c += 1
+        new_path = os.path.join(folder, f"{base}_{c}{ext}")
+    try:
+        os.rename(old_path, new_path)
+        logger.info(f"Umbenannt: {old_name} → {os.path.basename(new_path)}")
+        return new_path
+    except Exception as e:
+        logger.warning(f"Rename-Fehler {old_name}: {e}")
+        return None
+
+
+def _set_keywords(file_path, keywords):
+    """Keywords per exiftool in Datei schreiben."""
+    try:
+        cmd = [EXIFTOOL, "-overwrite_original"] + [f"-XMP:Subject+={kw}" for kw in keywords] + [file_path]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        if result.returncode != 0:
+            logger.warning(f"Exiftool-Fehler {os.path.basename(file_path)}: {result.stderr.strip()}")
+    except subprocess.TimeoutExpired:
+        logger.warning(f"Exiftool-Timeout: {os.path.basename(file_path)}")
+    except Exception as e:
+        logger.warning(f"Keyword-Fehler {os.path.basename(file_path)}: {e}")
+
+
+def _collect_folder_files(base_path):
+    """Alle Bilddateien geordnet nach Ordnername sammeln.
+    Gibt dict { folder_name: [(root, filename), ...] } zurueck."""
+    result = {}
+    for root, dirs, files in os.walk(base_path):
         folder_name = os.path.basename(root)
-
-        # Keywords basierend auf Ordnername
-        keywords = FOLDER_KEYWORD_MAP.get(folder_name)
-
-        # Zaehler PRO ORDNER neu starten
-        folder_counters = {}
-
+        if root == base_path:
+            continue  # Root-Ebene ueberspringen
         for filename in sorted(files):
             if filename.startswith('.'):
                 continue
             if not filename.lower().endswith(IMAGE_EXTS):
                 continue
+            result.setdefault(folder_name, []).append((root, filename))
+    return result
 
-            file_path = os.path.join(root, filename)
+
+def process_and_rename_files():
+    """
+    Benennt alle Bilder in 02-Webcheck nach dem Positions-Schema um
+    und setzt Keywords per exiftool:
+
+      B20-Clipping  →  {SKU}_1.ext          (Mainimage, max 1)
+      A10-Mood      →  {SKU}_2.ext, _3.ext  (Mood, max 2)
+      Alle anderen  →  {SKU}_4.ext, _5, ... (Pos 4-x, ordnernumsgreifend pro SKU)
+    """
+    logger.info("Phase 1: Dateien umbenennen und Keywords setzen...")
+    renamed = 0
+
+    folder_files = _collect_folder_files(webcheck_path)
+
+    # ── Pass 1: Mainimage (B20-Clipping) → _1 ──────────────────
+    sku_clip_count = {}
+    for root, filename in folder_files.get(MAINIMAGE_FOLDER, []):
+        sku_match = pattern.search(filename)
+        if not sku_match:
+            continue
+        sku = sku_match.group(0)
+        sku_clip_count[sku] = sku_clip_count.get(sku, 0) + 1
+        if sku_clip_count[sku] > 1:
+            logger.warning(f"Mehr als 1 Mainimage fuer SKU {sku} – ueberspringe {filename}")
+            continue
+        ext = os.path.splitext(filename)[1]
+        new_path = _do_rename(root, filename, f"{sku}_{MAINIMAGE_POS}{ext}")
+        if new_path:
+            _set_keywords(new_path, FOLDER_KEYWORD_MAP.get(MAINIMAGE_FOLDER, []))
+            renamed += 1
+
+    # ── Pass 2: Mood (A10-Mood) → _2, _3 ──────────────────────
+    sku_mood_count = {}
+    for root, filename in folder_files.get(MOOD_FOLDER, []):
+        sku_match = pattern.search(filename)
+        if not sku_match:
+            continue
+        sku = sku_match.group(0)
+        sku_mood_count[sku] = sku_mood_count.get(sku, 0) + 1
+        if sku_mood_count[sku] > MOOD_MAX:
+            logger.warning(f"Mehr als {MOOD_MAX} Mood-Bilder fuer SKU {sku} – ueberspringe {filename}")
+            continue
+        pos = MOOD_START_POS + sku_mood_count[sku] - 1
+        ext = os.path.splitext(filename)[1]
+        new_path = _do_rename(root, filename, f"{sku}_{pos}{ext}")
+        if new_path:
+            _set_keywords(new_path, FOLDER_KEYWORD_MAP.get(MOOD_FOLDER, []))
+            renamed += 1
+
+    # ── Pass 3: Alle anderen Ordner → _4, _5, _6 … ───────────
+    # Ordner alphabetisch sortieren fuer reproduzierbare Reihenfolge
+    sku_other_count = {}
+    for folder_name in sorted(folder_files.keys()):
+        if folder_name in (MAINIMAGE_FOLDER, MOOD_FOLDER):
+            continue
+        keywords = FOLDER_KEYWORD_MAP.get(folder_name, [])
+        for root, filename in folder_files[folder_name]:
             sku_match = pattern.search(filename)
+            if not sku_match:
+                continue
+            sku = sku_match.group(0)
+            sku_other_count[sku] = sku_other_count.get(sku, 0) + 1
+            pos = OTHER_START_POS + sku_other_count[sku] - 1
+            ext = os.path.splitext(filename)[1]
+            new_path = _do_rename(root, filename, f"{sku}_{pos}{ext}")
+            if new_path:
+                if keywords:
+                    _set_keywords(new_path, keywords)
+                renamed += 1
 
-            # --- Umbenennen mit sequenziellem Zaehler pro Ordner ---
-            if sku_match:
-                sku = sku_match.group(0)
-                ext = os.path.splitext(filename)[1]
-
-                # Zaehler fuer diese SKU im aktuellen Ordner inkrementieren
-                if sku not in folder_counters:
-                    folder_counters[sku] = 0
-                folder_counters[sku] += 1
-                counter = folder_counters[sku]
-
-                new_name = f"{sku}_{counter}{ext}"
-                new_path = os.path.join(root, new_name)
-
-                # Duplikat-Handling (Sicherheit): {SKU}_{Counter}_2.ext, etc.
-                collision_counter = 2
-                while os.path.exists(new_path) and new_path != file_path:
-                    base_name = f"{sku}_{counter}_{collision_counter}"
-                    new_name = f"{base_name}{ext}"
-                    new_path = os.path.join(root, new_name)
-                    collision_counter += 1
-
-                if new_path != file_path:
-                    try:
-                        os.rename(file_path, new_path)
-                        logger.info(f"Umbenannt: {filename} -> {new_name}")
-                        file_path = new_path
-                        renamed += 1
-                    except Exception as e:
-                        logger.warning(f"Rename-Fehler {filename}: {e}")
-
-            # --- Keywords per exiftool setzen ---
-            if keywords:
-                try:
-                    cmd = [EXIFTOOL, "-overwrite_original"]
-                    for kw in keywords:
-                        cmd.append(f"-XMP:Subject+={kw}")
-                    cmd.append(file_path)
-
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-                    if result.returncode == 0:
-                        keyword_ok += 1
-                    else:
-                        keyword_fail += 1
-                        logger.warning(f"Exiftool-Fehler {os.path.basename(file_path)}: {result.stderr.strip()}")
-                except subprocess.TimeoutExpired:
-                    keyword_fail += 1
-                    logger.warning(f"Exiftool-Timeout: {os.path.basename(file_path)}")
-                except Exception as e:
-                    keyword_fail += 1
-                    logger.warning(f"Keyword-Fehler {os.path.basename(file_path)}: {e}")
-
-    logger.info(f"Phase 1: {renamed} umbenannt, Keywords: {keyword_ok} OK / {keyword_fail} Fehler")
+    logger.info(f"Phase 1: {renamed} Dateien umbenannt")
     return True
 
 
@@ -268,70 +322,6 @@ def copy_images_to_upload():
         return 0
 
 
-# ============================================================
-# PHASE 2b: RENUMBER IMAGES IN UPLOAD (Pro SKU neu zaehlen)
-# ============================================================
-
-def renumber_images_in_upload():
-    """
-    Renumeriert alle Bilder im Upload-Ordner pro SKU.
-    Z.B. wenn 10055511_1.jpg und 10055511_4.jpg vorhanden sind,
-    werden sie zu 10055511_1.jpg und 10055511_2.jpg umbenannt.
-    """
-    logger.info("Phase 2b: Renumeriere Bilder im Upload-Ordner...")
-
-    try:
-        sku_counters = {}
-        renamed = 0
-
-        # Alle Dateien sammeln und sortieren
-        all_files = []
-        for filename in os.listdir(upload_path):
-            if filename.startswith('.'):
-                continue
-            if not filename.lower().endswith(IMAGE_EXTS):
-                continue
-            all_files.append(filename)
-
-        # Nach SKU und aktuellem Counter sortieren
-        all_files.sort()
-
-        for filename in all_files:
-            file_path = os.path.join(upload_path, filename)
-            if not os.path.isfile(file_path):
-                continue
-
-            sku_match = pattern.search(filename)
-            if not sku_match:
-                continue
-
-            sku = sku_match.group(0)
-            ext = os.path.splitext(filename)[1]
-
-            # Zaehler pro SKU inkrementieren
-            if sku not in sku_counters:
-                sku_counters[sku] = 0
-            sku_counters[sku] += 1
-            new_counter = sku_counters[sku]
-
-            new_name = f"{sku}_{new_counter}{ext}"
-            new_path = os.path.join(upload_path, new_name)
-
-            # Nur umbenennen wenn Namen unterschiedlich
-            if file_path != new_path and not os.path.exists(new_path):
-                try:
-                    os.rename(file_path, new_path)
-                    logger.info(f"Renumeriert: {filename} -> {new_name}")
-                    renamed += 1
-                except Exception as e:
-                    logger.warning(f"Renumerierungs-Fehler {filename}: {e}")
-
-        logger.info(f"Phase 2b: {renamed} Bilder renumeriert (pro SKU von _1 an)")
-        return renamed
-
-    except Exception as e:
-        logger.error(f"Fehler in Phase 2b: {e}")
-        return 0
 
 
 # ============================================================
@@ -619,10 +609,6 @@ if __name__ == "__main__":
         copied = copy_images_to_upload()
         if copied == 0:
             logger.warning("Keine Bilder kopiert!")
-
-        # Phase 2b: Renumeriere Bilder im Upload pro SKU
-        renumbered = renumber_images_in_upload()
-        logger.info(f"Renumeriert: {renumbered} Bilder")
 
         # Phase 3: Excel-Report
         img_count, art_count = create_excel_report(ticket_key)

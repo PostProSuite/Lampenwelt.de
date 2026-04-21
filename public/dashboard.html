@@ -4,219 +4,938 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PostPro Suite</title>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+.hidden{display:none !important;}
+
+:root {
+  --bg:       #060a15;
+  --sidebar:  #06091a;
+  --surface:  rgba(255,255,255,0.04);
+  --border:   rgba(255,255,255,0.07);
+  --text:     #eef0ff;
+  --text2:    #5a6388;
+  --text3:    #252d4a;
+  --brand:    #4a8fd4;
+  --green:    #22c55e;
+  --orange:   #f59e0b;
+  --red:      #ef4444;
+  --font:     'Inter', -apple-system, sans-serif;
+  --mono:     'SF Mono','Menlo','Consolas',monospace;
+  --r:16px;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Aurora */
+body::before {
+  content:''; position:fixed; border-radius:50%; pointer-events:none; z-index:0;
+  width:900px; height:900px; top:-380px; left:-280px;
+  background: radial-gradient(circle, rgba(74,143,212,0.17) 0%, transparent 65%);
+  animation: blob1 26s ease-in-out infinite alternate;
+}
+body::after {
+  content:''; position:fixed; border-radius:50%; pointer-events:none; z-index:0;
+  width:700px; height:700px; bottom:-280px; right:-220px;
+  background: radial-gradient(circle, rgba(99,102,241,0.13) 0%, transparent 65%);
+  animation: blob2 32s ease-in-out infinite alternate;
+}
+@keyframes blob1 {
+  0%  { transform:translate(0,0) scale(1); }
+  50% { transform:translate(110px,90px) scale(1.28); }
+  100%{ transform:translate(55px,150px) scale(0.88); }
+}
+@keyframes blob2 {
+  0%  { transform:translate(0,0) scale(1); }
+  50% { transform:translate(-95px,-75px) scale(1.22); }
+  100%{ transform:translate(-45px,-130px) scale(0.93); }
+}
+
+/* Grain */
+.fx-grain {
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity:.03;
+}
+.fx-lines {
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:repeating-linear-gradient(to bottom, transparent 0,transparent 2px,rgba(0,0,0,.055) 2px,rgba(0,0,0,.055) 4px);
+}
+
+/* Cursor glow */
+.cursor-glow {
+  position:fixed; pointer-events:none; z-index:1;
+  width:520px; height:520px;
+  background:radial-gradient(circle, rgba(74,143,212,.048) 0%, transparent 70%);
+  border-radius:50%; left:-999px; top:-999px;
+  transform:translate(-50%,-50%);
+  transition:left .1s ease, top .1s ease;
+}
+
+/* App */
+.app {
+  position:relative; z-index:2;
+  display:flex; height:100vh;
+  opacity:0; animation:appIn .4s ease .05s forwards;
+}
+@keyframes appIn{to{opacity:1;}}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width:196px; min-width:196px;
+  background:linear-gradient(180deg, rgba(5,8,22,.98) 0%, rgba(4,7,18,.96) 100%);
+  border-right:1px solid rgba(255,255,255,.06);
+  display:flex; flex-direction:column;
+  position:relative; z-index:10;
+}
+
+.sb-top {
+  padding:22px 14px 18px;
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+.sb-brand {
+  display:flex; align-items:center; gap:10px;
+}
+.sb-icon {
+  width:36px; height:36px; flex-shrink:0;
+  background:linear-gradient(135deg, rgba(74,143,212,.32), rgba(74,143,212,.1));
+  border:1px solid rgba(74,143,212,.38);
+  border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 0 22px rgba(74,143,212,.22), inset 0 1px 0 rgba(255,255,255,.07);
+}
+.sb-icon svg{width:20px;height:20px;}
+.sb-name{font-size:13px;font-weight:700;letter-spacing:-.02em;color:var(--text);line-height:1.2;}
+.sb-group{font-size:9px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--text2);margin-top:2px;}
+
+.nav{padding:10px 8px 0;flex:1;}
+.nav-sep{font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);padding:8px 8px 4px;}
+.nav-item{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 10px;border-radius:10px;
+  cursor:pointer;font-size:12px;font-weight:500;letter-spacing:-.01em;
+  color:var(--text2); transition:all .18s ease;
+  text-decoration:none; margin-bottom:2px; border:1px solid transparent;
+}
+.nav-item.active{
+  background:linear-gradient(90deg, rgba(74,143,212,.22), rgba(74,143,212,.06));
+  border-color:rgba(74,143,212,.2); color:var(--text);
+}
+.nav-item.active .ni{color:var(--brand); opacity:1;}
+.nav-item:hover:not(.active){background:rgba(255,255,255,.05);color:var(--text);}
+.ni{width:16px;display:flex;justify-content:center;opacity:.55;}
+
+.sb-bot{padding:12px 14px;border-top:1px solid rgba(255,255,255,.04);}
+.sb-ver{font-size:10px;color:var(--text3);font-family:var(--mono);letter-spacing:.04em;}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+
+/* ── HEADER ── */
+.header{
+  padding:0 20px; height:52px;
+  display:flex;align-items:center;gap:11px;
+  border-bottom:1px solid rgba(255,255,255,.05);
+  flex-shrink:0;
+  background:linear-gradient(180deg, rgba(8,12,28,.45) 0%, transparent 100%);
+}
+.header-cam{
+  width:30px;height:30px;flex-shrink:0;
+  filter:drop-shadow(0 0 9px rgba(74,143,212,.5));
+  animation:camFloat 7s ease-in-out infinite;
+}
+@keyframes camFloat{
+  0%,100%{transform:translateY(0) rotate(0deg);}
+  33%{transform:translateY(-2.5px) rotate(.6deg);}
+  66%{transform:translateY(1.5px) rotate(-.4deg);}
+}
+.header-title{
+  font-size:14px;font-weight:800;letter-spacing:-.025em;
+  background:linear-gradient(130deg, #ffffff 25%, rgba(74,143,212,.92) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.header-sep{width:1px;height:14px;background:rgba(255,255,255,.1);margin:0 2px;}
+.header-sub{font-size:10px;font-weight:400;letter-spacing:.14em;text-transform:uppercase;color:var(--text2);}
+.header-spacer{flex:1;}
+.header-ver{
+  font-size:10px;font-family:var(--mono);letter-spacing:.04em;color:var(--text2);
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+  padding:3px 10px;border-radius:20px;
+}
+
+/* ── VIEWS ── */
+.view{flex:1;overflow-y:auto;padding:16px;display:none;}
+.view.active{display:block;animation:viewIn .25s ease;}
+#view-workflows{padding:0 !important;overflow:hidden !important;}
+#view-workflows.active{display:flex !important;}
+@keyframes viewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── WORKFLOW LAYOUT ── */
+.wf-layout{
+  display:grid !important;
+  grid-template-columns:570px 1fr;
+  flex:1;min-height:0;overflow:hidden;
+}
+.wf-cards{overflow-y:auto;padding:14px 12px 14px 16px;}
+
+/* ── CARDS ── */
+.card{
+  position:relative;overflow:hidden;
+  background:linear-gradient(145deg, rgb(var(--cr)/.11) 0%, rgb(var(--cr)/.03) 75%);
+  border:1px solid rgb(var(--cr)/.18);
+  border-radius:var(--r);
+  padding:15px 16px;
+  margin-bottom:9px;
+  display:flex;align-items:center;
+  cursor:pointer;
+  transition:
+    transform .24s cubic-bezier(.34,1.56,.64,1),
+    box-shadow .22s ease,
+    border-color .22s ease,
+    background .22s ease;
+  animation:cardIn .55s cubic-bezier(.22,1,.36,1) both;
+}
+.card:hover{
+  transform:translateY(-3px) scale(1.007);
+  border-color:rgb(var(--cr)/.35);
+  background:linear-gradient(145deg, rgb(var(--cr)/.17) 0%, rgb(var(--cr)/.06) 75%);
+  box-shadow:0 14px 40px rgba(0,0,0,.3), 0 4px 20px rgb(var(--cr)/.1);
+}
+.card.running{
+  animation:cardPulse 2s ease-in-out infinite !important;
+  border-color:rgb(var(--cr)/.5) !important;
+}
+@keyframes cardIn{from{opacity:0;transform:translateY(18px) scale(.96);}to{opacity:1;transform:translateY(0) scale(1);}}
+@keyframes cardPulse{
+  0%,100%{box-shadow:0 0 0 0 rgb(var(--cr)/.0);}
+  50%{box-shadow:0 0 0 5px rgb(var(--cr)/.18), 0 8px 30px rgb(var(--cr)/.1);}
+}
+.card.disabled{opacity:.3;pointer-events:none;}
+
+/* Step badge */
+.card-step{
+  position:absolute;top:11px;right:12px;
+  font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:rgb(var(--cr)/.65);
+  background:rgb(var(--cr)/.1);
+  border:1px solid rgb(var(--cr)/.18);
+  padding:2px 8px;border-radius:20px;line-height:1.6;
+}
+
+/* Card icon */
+.card-icon{
+  width:44px;height:44px;flex-shrink:0;margin-right:14px;
+  background:linear-gradient(135deg, rgb(var(--cr)/.24) 0%, rgb(var(--cr)/.08) 100%);
+  border:1px solid rgb(var(--cr)/.28);
+  border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgb(var(--cr)/.14), inset 0 1px 0 rgba(255,255,255,.06);
+  transition:transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;
+}
+.card-icon svg{width:19px;height:19px;}
+.card:hover .card-icon{
+  transform:scale(1.12);
+  box-shadow:0 6px 24px rgb(var(--cr)/.28);
+}
+.card.running .card-icon{animation:iconPulse 1.4s ease-in-out infinite;}
+@keyframes iconPulse{
+  0%,100%{filter:brightness(1);box-shadow:0 4px 16px rgb(var(--cr)/.14);}
+  50%{filter:brightness(1.6);box-shadow:0 6px 30px rgb(var(--cr)/.45);}
+}
+
+/* Card text */
+.card-text{flex:1;min-width:0;padding-right:58px;}
+.card-text h3{font-size:13px;font-weight:700;letter-spacing:-.02em;margin-bottom:3px;color:var(--text);}
+.card-text p{font-size:11px;color:var(--text2);letter-spacing:-.01em;}
+
+/* Progress bar */
+.progress-track{
+  position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:rgba(255,255,255,.04);
+  border-radius:0 0 var(--r) var(--r);
+  overflow:hidden;opacity:0;transition:opacity .3s;
+}
+.progress-track.active{opacity:1;}
+.progress-fill{
+  height:100%;width:0%;
+  background:linear-gradient(90deg, transparent, var(--c), rgba(255,255,255,.9), var(--c));
+  background-size:200% 100%;
+  transition:width 1s cubic-bezier(.4,0,.2,1);
+  animation:barShim 1.8s linear infinite;
+}
+@keyframes barShim{to{background-position:-200% 0;}}
+
+/* ── ROLLOUT ── */
+.rollout{
+  background:rgb(var(--cr)/.04);
+  border:1px solid rgb(var(--cr)/.12);
+  border-top:none;
+  border-radius:0 0 var(--r) var(--r);
+  padding:0 15px;
+  margin:-9px 0 9px 0;
+  max-height:0;overflow:hidden;opacity:0;
+  transition:max-height .35s cubic-bezier(.4,0,.2,1), opacity .25s ease, padding .35s ease;
+}
+.rollout.active{max-height:300px;opacity:1;padding:14px 15px;}
+
+.rollout-label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;}
+.rollout-input-row{display:flex;gap:8px;}
+.rollout-noinput{display:flex;padding:2px 0;}
+.rollout-input{
+  flex:1;height:37px;padding:0 13px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:10px;color:var(--text);
+  font-size:13px;font-family:var(--font);outline:none;
+  transition:border-color .2s, box-shadow .2s;
+}
+.rollout-input::placeholder{color:var(--text3);}
+.rollout-input:focus{
+  border-color:rgb(var(--cr)/.55);
+  box-shadow:0 0 0 3px rgb(var(--cr)/.12);
+}
+.rollout-input.error{border-color:var(--red);animation:shake .4s ease;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+
+.rollout-start{
+  height:37px;padding:0 20px;
+  background:var(--c);color:#fff;border:none;border-radius:10px;
+  font-size:12px;font-weight:700;letter-spacing:.02em;
+  cursor:pointer;font-family:var(--font);
+  box-shadow:0 4px 20px rgb(var(--cr)/.38);
+  transition:transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s, filter .18s;
+}
+.rollout-start:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgb(var(--cr)/.52);filter:brightness(1.1);}
+.rollout-start:active{transform:scale(.96);}
+.rollout-start.stop-active{background:var(--red);box-shadow:0 4px 20px rgba(239,68,68,.38);}
+
+.rollout-footer{
+  border-top:1px solid rgba(255,255,255,.05);margin-top:10px;padding-top:6px;
+  text-align:right;max-height:0;overflow:hidden;opacity:0;
+  transition:max-height .3s, opacity .3s;
+}
+.rollout-footer.active{max-height:40px;opacity:1;}
+.rollout-copy,.rollout-close{
+  background:none;border:none;color:rgb(var(--cr)/.7);
+  font-size:11px;cursor:pointer;padding:4px 10px;
+  font-family:var(--font);border-radius:6px;
+  transition:background .18s,color .18s;margin-right:4px;
+}
+.rollout-copy.hidden{display:none !important;}
+.rollout-copy:hover,.rollout-close:hover{background:rgb(var(--cr)/.1);color:var(--c);}
+
+/* ── STATUS PANEL ── */
+.wf-log{
+  border-left:1px solid rgba(255,255,255,.04);
+  display:flex;flex-direction:column;
+  background:#030610;
+  overflow:hidden;
+}
+.status-hero{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  padding:28px 24px;
+}
+.sh-state{display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;width:100%;}
+/* Idle */
+.sh-idle-ring{
+  width:54px;height:54px;border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.07);
+  display:flex;align-items:center;justify-content:center;
+  animation:idlePulse 4s ease-in-out infinite;
+}
+@keyframes idlePulse{0%,100%{box-shadow:0 0 0 0 rgba(74,143,212,.0);}50%{box-shadow:0 0 0 8px rgba(74,143,212,.05);}}
+.sh-idle-label{font-size:11px;font-weight:500;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;}
+/* Running */
+@keyframes spin{to{transform:rotate(360deg);}}
+.sh-spinner{
+  width:42px;height:42px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.06);
+  border-top-color:var(--brand);
+  animation:spin .7s linear infinite;
+  flex-shrink:0;
+}
+.sh-wf-name{font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.025em;}
+.sh-last{
+  font-size:11px;color:var(--text2);
+  max-width:290px;line-height:1.65;min-height:36px;
+  transition:opacity .15s;
+}
+/* Result */
+.sh-result-icon{
+  width:54px;height:54px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  animation:resultPop .5s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes resultPop{from{transform:scale(.6);opacity:0;}to{transform:scale(1);opacity:1;}}
+.sh-result-icon.ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.28);}
+.sh-result-icon.err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);}
+.sh-result-label{font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.02em;}
+.sh-result-sub{font-size:11px;color:var(--text2);max-width:260px;line-height:1.55;}
+/* Details footer */
+.log-footer{flex-shrink:0;border-top:1px solid rgba(255,255,255,.05);}
+.log-footer-bar{
+  display:flex;align-items:center;
+}
+.log-toggle{
+  flex:1;display:flex;align-items:center;gap:8px;
+  padding:9px 14px;background:none;border:none;
+  color:var(--text2);font-size:11px;font-family:var(--font);
+  cursor:pointer;letter-spacing:.01em;user-select:none;
+  transition:color .18s;
+}
+.log-toggle:hover{color:var(--text);}
+.log-toggle-chevron{transition:transform .22s cubic-bezier(.34,1.56,.64,1);flex-shrink:0;opacity:.5;}
+.log-toggle.open .log-toggle-chevron{transform:rotate(180deg);}
+.log-err-badge{
+  margin-left:auto;font-size:9px;font-weight:600;
+  background:rgba(239,68,68,.12);color:#f87171;
+  border:1px solid rgba(239,68,68,.22);
+  padding:1px 7px;border-radius:10px;letter-spacing:.06em;
+}
+.log-copy{
+  flex-shrink:0;display:flex;align-items:center;gap:5px;
+  padding:6px 12px;margin-right:8px;background:none;border:none;
+  color:var(--text2);font-size:11px;font-family:var(--font);
+  cursor:pointer;letter-spacing:.01em;user-select:none;
+  border-radius:6px;transition:color .18s, background .18s;
+}
+.log-copy:hover{color:var(--text);background:rgba(255,255,255,.06);}
+.log-copy.copied{color:var(--green);}
+.log-copy svg{opacity:.6;flex-shrink:0;}
+.log-raw{overflow-y:auto;max-height:0;transition:max-height .32s cubic-bezier(.4,0,.2,1);}
+.log-raw.open{max-height:220px;}
+.log-raw-inner{padding:10px 14px 12px;}
+.log-line{font-family:var(--mono);font-size:10.5px;line-height:1.72;color:rgba(255,255,255,.22);animation:logIn .14s ease;}
+.log-line.err{color:#f87171;} .log-line.ok{color:#34d399;} .log-line.info{color:#60a5fa;} .log-line.warn{color:#fbbf24;}
+@keyframes logIn{from{opacity:0;}to{opacity:1;}}
+
+/* ── STATUS BAR ── */
+.status-bar{
+  display:flex;align-items:center;padding:0 18px;height:27px;
+  border-top:1px solid rgba(255,255,255,.04);flex-shrink:0;
+  background:rgba(0,0,0,.25);font-size:11px;letter-spacing:-.01em;
+  transition:background .4s;
+}
+.status-bar.running{background:rgba(245,158,11,.05);}
+.status-bar.error{background:rgba(239,68,68,.05);}
+.sdot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--green);flex-shrink:0;margin-right:9px;
+  transition:background .4s;animation:dotIdle 3s ease-in-out infinite;
+}
+@keyframes dotIdle{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.3);}50%{box-shadow:0 0 0 3px rgba(34,197,94,0);}}
+.status-bar.running .sdot{background:var(--orange);animation:dotRun 1s ease-in-out infinite;}
+@keyframes dotRun{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(245,158,11,.5);}50%{transform:scale(1.5);box-shadow:0 0 0 4px rgba(245,158,11,0);}}
+.status-bar.error .sdot{background:var(--red);animation:dotErr .5s ease-in-out infinite alternate;}
+@keyframes dotErr{from{opacity:1}to{opacity:.3}}
+.stext{color:rgba(255,255,255,.35);transition:color .3s;}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:2px;}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.14);}
+
+/* Fallback views */
+.section{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);padding:16px;margin-bottom:12px;}
+.section-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.05);}
+.empty-msg{font-size:12px;color:var(--text2);padding:6px 0;}
+
+/* ── PYTHON WARNING BANNER ── */
+.py-warn{
+  background:rgba(245,158,11,.06);
+  border:1px solid rgba(245,158,11,.2);
+  border-radius:10px;margin:8px 16px 0;
+  padding:9px 14px;display:flex;align-items:flex-start;gap:10px;
+  font-size:11px;color:var(--orange);line-height:1.55;flex-shrink:0;
+  animation:viewIn .3s ease;
+}
+.py-warn svg{flex-shrink:0;margin-top:1px;}
+.py-warn code{font-family:var(--mono);font-size:10px;background:rgba(245,158,11,.1);padding:1px 5px;border-radius:4px;}
+.py-warn-close{margin-left:auto;background:none;border:none;color:var(--orange);cursor:pointer;opacity:.5;font-size:18px;line-height:1;padding:0 0 0 8px;flex-shrink:0;}
+.py-warn-close:hover{opacity:1;}
+
+/* ── SIDEBAR FOLDER BUTTONS ── */
+.sbf-block{padding:0 8px 6px;border-top:1px solid rgba(255,255,255,.04);margin-top:4px;}
+.sbf-sep{font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);padding:8px 2px 4px;display:block;}
+.sbf-item{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 8px;border-radius:8px;
+  cursor:pointer;font-size:11px;font-weight:500;
+  color:var(--text2);transition:all .18s ease;
+  margin-bottom:1px;border:1px solid transparent;
+  user-select:none;
+}
+.sbf-item:hover{background:rgba(255,255,255,.05);color:var(--text);border-color:rgba(255,255,255,.05);}
+.sbf-icon{width:14px;display:flex;justify-content:center;opacity:.45;flex-shrink:0;}
+.sbf-item:hover .sbf-icon{opacity:.8;}
+.sbf-arr{margin-left:auto;opacity:0;transition:opacity .15s;flex-shrink:0;}
+.sbf-item:hover .sbf-arr{opacity:.35;}
+</style>
 </head>
 <body>
+<div class="fx-grain"></div>
+<div class="fx-lines"></div>
 
-<!-- ═══ APP ═══ -->
 <div class="app" id="app">
+<div class="cursor-glow" id="cursorGlow"></div>
 
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="sidebar-logo">
-      <div class="sidebar-logo-text">PostPro Suite</div>
-      <div class="sidebar-logo-sub">LUQOM GROUP</div>
-    </div>
-    <div class="sidebar-divider"></div>
-    <nav class="nav">
-      <a class="nav-item active" data-view="workflows" href="#">
-        <span class="nav-icon">▶</span> Workflows
-      </a>
-      <a class="nav-item" data-view="history" href="#">
-        <span class="nav-icon">📊</span> Exports
-      </a>
-      <a class="nav-item" data-view="settings" href="#">
-        <span class="nav-icon">⚙</span> Einstellungen
-      </a>
-    </nav>
-  </aside>
-
-  <!-- MAIN -->
-  <div class="main">
-
-    <!-- HEADER -->
-    <div class="header">
-      <img class="header-logo-icon" src="/assets/logo/LUQOM-Icon.svg" alt="LUQOM">
-      <span class="header-title">PostPro Suite</span>
-      <span class="header-version">v1.0.0-Desktop</span>
-    </div>
-
-    <!-- ═══ VIEW: WORKFLOWS ═══ -->
-    <div class="view active" id="view-workflows">
-      <div class="wf-layout">
-        <!-- LEFT: Workflow Cards -->
-        <div class="wf-cards-col">
-          <div id="cards">
-            <div class="card" style="animation-delay:0s">
-              <div class="card-icon">⬇</div>
-              <div class="card-text">
-                <h3>Download RAW (SKU)</h3>
-                <p>Load images from DAM by SKU</p>
-              </div>
-              <span class="progress-percent" id="percent-0">0%</span>
-              <div class="progress-container" id="pbar-0">
-                <div class="progress-fill" id="pfill-0"></div>
-              </div>
-            </div>
-            <div class="rollout" id="rollout-0">
-              <div class="rollout-label">Request Key / SKU</div>
-              <div class="rollout-input-row">
-                <input class="rollout-input" id="input-0" placeholder="z. B. 10050196" onkeydown="if(event.key==='Enter') startWorkflow(0)">
-                <button class="rollout-start" onclick="startWorkflow(0)">Starten</button>
-              </div>
-              <div class="rollout-progress" id="rprogress-0"></div>
-              <div class="rollout-result" id="rresult-0"></div>
-              <div class="rollout-footer" id="rfooter-0">
-                <button class="rollout-copy hidden" id="copybtn-0" onclick="copyLog()">📋 Kopieren</button>
-                <button class="rollout-close" onclick="closeRollout(0)">Schliessen</button>
-              </div>
-            </div>
-
-            <div class="card" style="animation-delay:0.06s">
-              <div class="card-icon">⬇</div>
-              <div class="card-text">
-                <h3>Download RAW (Category ID)</h3>
-                <p>Load images from DAM by Category ID</p>
-              </div>
-              <span class="progress-percent" id="percent-1">0%</span>
-              <div class="progress-container" id="pbar-1">
-                <div class="progress-fill" id="pfill-1"></div>
-              </div>
-            </div>
-            <div class="rollout" id="rollout-1">
-              <div class="rollout-label">Category ID</div>
-              <div class="rollout-input-row">
-                <input class="rollout-input" id="input-1" placeholder="z. B. 591672" onkeydown="if(event.key==='Enter') startWorkflow(1)">
-                <button class="rollout-start" onclick="startWorkflow(1)">Starten</button>
-              </div>
-              <div class="rollout-progress" id="rprogress-1"></div>
-              <div class="rollout-result" id="rresult-1"></div>
-              <div class="rollout-footer" id="rfooter-1">
-                <button class="rollout-copy hidden" id="copybtn-1" onclick="copyLog()">📋 Kopieren</button>
-                <button class="rollout-close" onclick="closeRollout(1)">Schliessen</button>
-              </div>
-            </div>
-
-            <div class="card" style="animation-delay:0.12s">
-              <div class="card-icon">📁</div>
-              <div class="card-text">
-                <h3>Image Classification</h3>
-                <p>Sort, rename & classify images</p>
-              </div>
-              <span class="progress-percent" id="percent-2">0%</span>
-              <div class="progress-container" id="pbar-2">
-                <div class="progress-fill" id="pfill-2"></div>
-              </div>
-            </div>
-            <div class="rollout" id="rollout-2">
-              <div class="rollout-noinput">
-                <button class="rollout-start" onclick="startWorkflow(2)">Starten</button>
-              </div>
-              <div class="rollout-progress" id="rprogress-2"></div>
-              <div class="rollout-result" id="rresult-2"></div>
-              <div class="rollout-footer" id="rfooter-2">
-                <button class="rollout-copy hidden" id="copybtn-2" onclick="copyLog()">📋 Kopieren</button>
-                <button class="rollout-close" onclick="closeRollout(2)">Schliessen</button>
-              </div>
-            </div>
-
-            <div class="card" style="animation-delay:0.18s">
-              <div class="card-icon">✓</div>
-              <div class="card-text">
-                <h3>Jira Ticket Completion</h3>
-                <p>Update Jira ticket & close</p>
-              </div>
-              <span class="progress-percent" id="percent-3">0%</span>
-              <div class="progress-container" id="pbar-3">
-                <div class="progress-fill" id="pfill-3"></div>
-              </div>
-            </div>
-            <div class="rollout" id="rollout-3">
-              <div class="rollout-label">Ticket-Nummer</div>
-              <div class="rollout-input-row">
-                <input class="rollout-input" id="input-3" placeholder="z. B. 5175" onkeydown="if(event.key==='Enter') startWorkflow(3)">
-                <button class="rollout-start" onclick="startWorkflow(3)">Starten</button>
-              </div>
-              <div class="rollout-progress" id="rprogress-3"></div>
-              <div class="rollout-result" id="rresult-3"></div>
-              <div class="rollout-footer" id="rfooter-3">
-                <button class="rollout-copy hidden" id="copybtn-3" onclick="copyLog()">📋 Kopieren</button>
-                <button class="rollout-close" onclick="closeRollout(3)">Schliessen</button>
-              </div>
-            </div>
-
-            <div class="card" style="animation-delay:0.24s">
-              <div class="card-icon">☁</div>
-              <div class="card-text">
-                <h3>Upload to DAM</h3>
-                <p>Push images directly to DAM</p>
-              </div>
-              <span class="progress-percent" id="percent-4">0%</span>
-              <div class="progress-container" id="pbar-4">
-                <div class="progress-fill" id="pfill-4"></div>
-              </div>
-            </div>
-            <div class="rollout" id="rollout-4">
-              <div class="rollout-noinput">
-                <button class="rollout-start" onclick="startWorkflow(4)">Starten</button>
-              </div>
-              <div class="rollout-progress" id="rprogress-4"></div>
-              <div class="rollout-result" id="rresult-4"></div>
-              <div class="rollout-footer" id="rfooter-4">
-                <button class="rollout-copy hidden" id="copybtn-4" onclick="copyLog()">📋 Kopieren</button>
-                <button class="rollout-close" onclick="closeRollout(4)">Schliessen</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- RIGHT: Script Output -->
-        <div class="wf-log-col" id="logPanel">
-          <div class="log-content" id="logContent"></div>
-        </div>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-top">
+    <div class="sb-brand">
+      <div class="sb-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" fill="rgba(74,143,212,.92)">
+          <path d="M176.6,108.4c-13.9-7.4-29.9-8.9-44.9-4.3-4.1,1.3-8.1,3-11.8,5.1l74.7,88.5c12.3-15.2,16.4-35.7,10.7-54.4-4.6-15.1-14.8-27.4-28.7-34.8Z"/>
+          <path d="M265.8,59c0-3.2-2.6-5.8-5.8-5.8h-28.2c-3.2,0-5.8,2.6-5.8,5.8v6h39.8v-6Z"/>
+          <path d="M260.8,69.3h-45.5c-7.4,0-9.5-3.3-9.5-3.3,0,0-7.4-13.6-12.5-20.7-5.1-7.1-13.8-7-13.8-7h-58.4s-8.7-.1-13.8,7-12.5,20.7-12.5,20.7c0,0-2.1,3.3-9.5,3.3h-45.5c-17.7,0-32,14.3-32,32v128c0,17.7,14.3,32,32,32h220.9c17.7,0,32-14.3,32-32v-128c0-17.7-14.3-32-32-32ZM223.3,231.6l-11.9,10-18-21.3c-6.8,5.1-14.5,8.9-22.7,11.5-39.3,12-81-10.2-93-49.5-5.8-19-3.6-40,6-57.5l11,13c-5.3,12.7-6.1,26.8-2.1,39.9,4.6,15,14.8,27.4,28.7,34.8,13.9,7.4,29.9,9,44.9,4.4,6.2-1.9,12-4.8,17.2-8.5l-85.9-101.7,6.2-5.3c7.1-5.4,15-9.5,23.6-12.1,19-5.8,39.2-3.9,56.8,5.5,17.6,9.3,30.4,25,36.2,44,7.5,24.6,1.6,51.6-15.4,71l18.5,21.9ZM272.3,102.8c0,2.8-2.2,5-5,5h-34.5c-2.8,0-5-2.2-5-5v-7.5c0-2.8,2.2-5,5-5h34.5c2.8,0,5,2.2,5,5v7.5Z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="sb-name">PostPro Suite</div>
+        <div class="sb-group">Luqom Group</div>
       </div>
     </div>
+  </div>
 
-    <!-- STATUS BAR -->
-    <div class="status-bar">
-      <span class="status-label">Status:</span>
-      <span class="status-text" id="statusText">Bereit</span>
+  <nav class="nav">
+    <div class="nav-sep">Workspace</div>
+    <a class="nav-item active" data-view="workflows" href="#">
+      <span class="ni">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h5v5H2zm7 0h5v5h-5zM2 9h5v5H2zm9 2l2-2 2 2-2 2z"/></svg>
+      </span>
+      Workflows
+    </a>
+    <a class="nav-item" data-view="exports" href="#">
+      <span class="ni">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V3a1 1 0 00-1-1zm-2 8H5V9h6v1zm0-3H5V6h6v1z"/></svg>
+      </span>
+      Exports
+    </a>
+  </nav>
+
+  <div class="sbf-block">
+    <span class="sbf-sep">Folders</span>
+    <div class="sbf-item" onclick="openFolder('01-Input RAW files')">
+      <span class="sbf-icon">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M9.828 3H3.5A1.5 1.5 0 002 4.5v8A1.5 1.5 0 003.5 14h9a1.5 1.5 0 001.5-1.5V7.914a1.5 1.5 0 00-.44-1.06L9.828 3zm-2.95-.5A2.5 2.5 0 018.586 2H14a1 1 0 011 1v1H2V4.5A2.5 2.5 0 014.5 2H6.88a2.5 2.5 0 011.5.5l.328.246-.828.828L6.88 3H4.5A1.5 1.5 0 003 4.5V3H2A.5.5 0 001.5 3.5v.414L1 4V3.5A1.5 1.5 0 012.5 2H6.88z"/><path d="M1 6h14v6.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 011 12.5V6z"/></svg>
+      </span>
+      Input RAW
+      <span class="sbf-arr">
+        <svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 3h7a.5.5 0 01.5.5v7a.5.5 0 01-1 0V4.707L4.354 11.354a.5.5 0 01-.707-.707L10.293 4H4.5a.5.5 0 010-1z"/></svg>
+      </span>
     </div>
+    <div class="sbf-item" onclick="openFolder('02-Webcheck')">
+      <span class="sbf-icon">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M9.828 3H3.5A1.5 1.5 0 002 4.5v8A1.5 1.5 0 003.5 14h9a1.5 1.5 0 001.5-1.5V7.914a1.5 1.5 0 00-.44-1.06L9.828 3zm-2.95-.5A2.5 2.5 0 018.586 2H14a1 1 0 011 1v1H2V4.5A2.5 2.5 0 014.5 2H6.88a2.5 2.5 0 011.5.5l.328.246-.828.828L6.88 3H4.5A1.5 1.5 0 003 4.5V3H2A.5.5 0 001.5 3.5v.414L1 4V3.5A1.5 1.5 0 012.5 2H6.88z"/><path d="M1 6h14v6.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 011 12.5V6z"/></svg>
+      </span>
+      Webcheck
+      <span class="sbf-arr">
+        <svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 3h7a.5.5 0 01.5.5v7a.5.5 0 01-1 0V4.707L4.354 11.354a.5.5 0 01-.707-.707L10.293 4H4.5a.5.5 0 010-1z"/></svg>
+      </span>
+    </div>
+    <div class="sbf-item" onclick="openFolder('03-Upload')">
+      <span class="sbf-icon">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M9.828 3H3.5A1.5 1.5 0 002 4.5v8A1.5 1.5 0 003.5 14h9a1.5 1.5 0 001.5-1.5V7.914a1.5 1.5 0 00-.44-1.06L9.828 3zm-2.95-.5A2.5 2.5 0 018.586 2H14a1 1 0 011 1v1H2V4.5A2.5 2.5 0 014.5 2H6.88a2.5 2.5 0 011.5.5l.328.246-.828.828L6.88 3H4.5A1.5 1.5 0 003 4.5V3H2A.5.5 0 001.5 3.5v.414L1 4V3.5A1.5 1.5 0 012.5 2H6.88z"/><path d="M1 6h14v6.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 011 12.5V6z"/></svg>
+      </span>
+      Upload
+      <span class="sbf-arr">
+        <svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 3h7a.5.5 0 01.5.5v7a.5.5 0 01-1 0V4.707L4.354 11.354a.5.5 0 01-.707-.707L10.293 4H4.5a.5.5 0 010-1z"/></svg>
+      </span>
+    </div>
+  </div>
 
+  <div class="sb-bot">
+    <div class="sb-ver">v1.0.8</div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- HEADER -->
+  <div class="header">
+    <svg class="header-cam" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
+      <path fill="white" d="M176.6,108.4c-13.9-7.4-29.9-8.9-44.9-4.3-4.1,1.3-8.1,3-11.8,5.1l74.7,88.5c12.3-15.2,16.4-35.7,10.7-54.4-4.6-15.1-14.8-27.4-28.7-34.8Z"/>
+      <path fill="white" d="M265.8,59c0-3.2-2.6-5.8-5.8-5.8h-28.2c-3.2,0-5.8,2.6-5.8,5.8v6h39.8v-6Z"/>
+      <path fill="white" d="M260.8,69.3h-45.5c-7.4,0-9.5-3.3-9.5-3.3,0,0-7.4-13.6-12.5-20.7-5.1-7.1-13.8-7-13.8-7h-58.4s-8.7-.1-13.8,7-12.5,20.7-12.5,20.7c0,0-2.1,3.3-9.5,3.3h-45.5c-17.7,0-32,14.3-32,32v128c0,17.7,14.3,32,32,32h220.9c17.7,0,32-14.3,32-32v-128c0-17.7-14.3-32-32-32ZM223.3,231.6l-11.9,10-18-21.3c-6.8,5.1-14.5,8.9-22.7,11.5-39.3,12-81-10.2-93-49.5-5.8-19-3.6-40,6-57.5l11,13c-5.3,12.7-6.1,26.8-2.1,39.9,4.6,15,14.8,27.4,28.7,34.8,13.9,7.4,29.9,9,44.9,4.4,6.2-1.9,12-4.8,17.2-8.5l-85.9-101.7,6.2-5.3c7.1-5.4,15-9.5,23.6-12.1,19-5.8,39.2-3.9,56.8,5.5,17.6,9.3,30.4,25,36.2,44,7.5,24.6,1.6,51.6-15.4,71l18.5,21.9ZM272.3,102.8c0,2.8-2.2,5-5,5h-34.5c-2.8,0-5-2.2-5-5v-7.5c0-2.8,2.2-5,5-5h34.5c2.8,0,5,2.2,5,5v7.5Z"/>
+    </svg>
+    <div class="header-title">PostPro Suite</div>
+    <div class="header-sep"></div>
+    <div class="header-sub">Image Workflow</div>
+    <div class="header-spacer"></div>
+    <span class="header-ver">v1.0.8</span>
+  </div>
+
+  <!-- Python package warning -->
+  <div id="pyWarn" class="py-warn hidden">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="#f59e0b"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 2.5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 018 3.5zm0 7.25a.75.75 0 110 1.5.75.75 0 010-1.5z"/></svg>
+    <span>Python-Pakete fehlen — Terminal öffnen und ausführen: <code>pip3 install requests paramiko Pillow openpyxl aiohttp python-dotenv jira</code></span>
+    <button class="py-warn-close" onclick="this.closest('.py-warn').classList.add('hidden')">×</button>
+  </div>
+
+  <!-- VIEW: WORKFLOWS -->
+  <div class="view active" id="view-workflows">
+    <div class="wf-layout">
+
+      <!-- Cards -->
+      <div class="wf-cards">
+        <div id="cards">
+
+          <!-- 0: SKU — Blue -->
+          <div class="card" style="--c:#3b82f6;--cr:59 130 246;animation-delay:.04s" onclick="onCardClick(0)">
+            <div class="card-step">Step 1</div>
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            </div>
+            <div class="card-text">
+              <h3>Download RAW (SKU)</h3>
+              <p>Images from DAM by Request Key</p>
+            </div>
+            <div class="progress-track" id="pbar-0"><div class="progress-fill" id="pfill-0"></div></div>
+          </div>
+          <div class="rollout" id="rollout-0" style="--c:#3b82f6;--cr:59 130 246">
+            <div class="rollout-label">Request Key / SKU</div>
+            <div class="rollout-input-row">
+              <input class="rollout-input" id="input-0" placeholder="z. B. 10050196" autocomplete="off" onkeydown="if(event.key==='Enter')startWorkflow(0)">
+              <button class="rollout-start" onclick="startWorkflow(0)">Starten</button>
+            </div>
+            <div class="rollout-footer" id="rfooter-0">
+              <button class="rollout-copy hidden" id="copybtn-0" onclick="copyLog()">Kopieren</button>
+              <button class="rollout-close" onclick="closeRollout(0)">Schliessen</button>
+            </div>
+          </div>
+
+          <!-- 1: Category — Cyan -->
+          <div class="card" style="--c:#06b6d4;--cr:6 182 212;animation-delay:.1s" onclick="onCardClick(1)">
+            <div class="card-step">Step 2</div>
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+              </svg>
+            </div>
+            <div class="card-text">
+              <h3>Download RAW (Category ID)</h3>
+              <p>Images from DAM by Category</p>
+            </div>
+            <div class="progress-track" id="pbar-1"><div class="progress-fill" id="pfill-1"></div></div>
+          </div>
+          <div class="rollout" id="rollout-1" style="--c:#06b6d4;--cr:6 182 212">
+            <div class="rollout-label">Category ID</div>
+            <div class="rollout-input-row">
+              <input class="rollout-input" id="input-1" placeholder="z. B. 591672" autocomplete="off" onkeydown="if(event.key==='Enter')startWorkflow(1)">
+              <button class="rollout-start" onclick="startWorkflow(1)">Starten</button>
+            </div>
+            <div class="rollout-footer" id="rfooter-1">
+              <button class="rollout-copy hidden" id="copybtn-1" onclick="copyLog()">Kopieren</button>
+              <button class="rollout-close" onclick="closeRollout(1)">Schliessen</button>
+            </div>
+          </div>
+
+          <!-- 2: Classification — Violet -->
+          <div class="card" style="--c:#8b5cf6;--cr:139 92 246;animation-delay:.16s" onclick="onCardClick(2)">
+            <div class="card-step">Step 3</div>
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+                <line x1="7" y1="7" x2="7.01" y2="7"/>
+              </svg>
+            </div>
+            <div class="card-text">
+              <h3>Image Classification</h3>
+              <p>Sort, rename &amp; classify images</p>
+            </div>
+            <div class="progress-track" id="pbar-2"><div class="progress-fill" id="pfill-2"></div></div>
+          </div>
+          <div class="rollout" id="rollout-2" style="--c:#8b5cf6;--cr:139 92 246">
+            <div class="rollout-noinput">
+              <button class="rollout-start" onclick="startWorkflow(2)">Starten</button>
+            </div>
+            <div class="rollout-footer" id="rfooter-2">
+              <button class="rollout-copy hidden" id="copybtn-2" onclick="copyLog()">Kopieren</button>
+              <button class="rollout-close" onclick="closeRollout(2)">Schliessen</button>
+            </div>
+          </div>
+
+          <!-- 3: Jira — Amber -->
+          <div class="card" style="--c:#f59e0b;--cr:245 158 11;animation-delay:.22s" onclick="onCardClick(3)">
+            <div class="card-step">Step 4</div>
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+              </svg>
+            </div>
+            <div class="card-text">
+              <h3>Jira Ticket Completion</h3>
+              <p>Update &amp; close Jira ticket</p>
+            </div>
+            <div class="progress-track" id="pbar-3"><div class="progress-fill" id="pfill-3"></div></div>
+          </div>
+          <div class="rollout" id="rollout-3" style="--c:#f59e0b;--cr:245 158 11">
+            <div class="rollout-label">Ticket-Nummer</div>
+            <div class="rollout-input-row">
+              <input class="rollout-input" id="input-3" placeholder="z. B. 5175" autocomplete="off" onkeydown="if(event.key==='Enter')startWorkflow(3)">
+              <button class="rollout-start" onclick="startWorkflow(3)">Starten</button>
+            </div>
+            <div class="rollout-footer" id="rfooter-3">
+              <button class="rollout-copy hidden" id="copybtn-3" onclick="copyLog()">Kopieren</button>
+              <button class="rollout-close" onclick="closeRollout(3)">Schliessen</button>
+            </div>
+          </div>
+
+          <!-- 4: Upload — Emerald -->
+          <div class="card" style="--c:#10b981;--cr:16 185 129;animation-delay:.28s" onclick="onCardClick(4)">
+            <div class="card-step">Step 5</div>
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+                <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/>
+              </svg>
+            </div>
+            <div class="card-text">
+              <h3>Upload to DAM</h3>
+              <p>Push processed images to DAM</p>
+            </div>
+            <div class="progress-track" id="pbar-4"><div class="progress-fill" id="pfill-4"></div></div>
+          </div>
+          <div class="rollout" id="rollout-4" style="--c:#10b981;--cr:16 185 129">
+            <div class="rollout-noinput">
+              <button class="rollout-start" onclick="startWorkflow(4)">Starten</button>
+            </div>
+            <div class="rollout-footer" id="rfooter-4">
+              <button class="rollout-copy hidden" id="copybtn-4" onclick="copyLog()">Kopieren</button>
+              <button class="rollout-close" onclick="closeRollout(4)">Schliessen</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Status Panel -->
+      <div class="wf-log">
+        <div class="status-hero">
+
+          <!-- Idle -->
+          <div class="sh-state" id="shIdle">
+            <div class="sh-idle-ring">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(74,143,212,.4)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+              </svg>
+            </div>
+            <div class="sh-idle-label">Bereit</div>
+          </div>
+
+          <!-- Running -->
+          <div class="sh-state hidden" id="shRunning">
+            <div class="sh-spinner"></div>
+            <div class="sh-wf-name" id="shWfName"></div>
+            <div class="sh-last" id="shLast"></div>
+          </div>
+
+          <!-- Result -->
+          <div class="sh-state hidden" id="shResult">
+            <div class="sh-result-icon" id="shResultIcon">
+              <svg id="shResultSvg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></svg>
+            </div>
+            <div class="sh-result-label" id="shResultLabel"></div>
+            <div class="sh-result-sub" id="shResultSub"></div>
+          </div>
+
+        </div>
+
+        <!-- Collapsible raw log -->
+        <div class="log-footer">
+          <div class="log-footer-bar">
+            <button class="log-toggle" id="logToggle" onclick="toggleLog()">
+              <svg class="log-toggle-chevron" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 6l4 4 4-4"/></svg>
+              Details
+              <span class="log-err-badge hidden" id="logErrBadge">Fehler</span>
+            </button>
+            <button class="log-copy" id="logCopy" onclick="copyLog()" title="Log kopieren">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              Kopieren
+            </button>
+          </div>
+          <div class="log-raw" id="logRaw">
+            <div class="log-raw-inner" id="logContent"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar" id="statusBar">
+    <span class="sdot" id="sdot"></span>
+    <span class="stext" id="stext">Bereit</span>
   </div>
 
 </div>
+</div>
 
 <script>
-let activeRollout = null;
+let activeRollout   = null;
+let workflowRunning = false;
+let activeWorkflowId = null;
+let lastStatusLine  = '';
+let logOpen         = false;
+
+const WF_NAMES = [
+  'Download RAW (SKU)',
+  'Download RAW (Category ID)',
+  'Image Classification',
+  'Jira Ticket Completion',
+  'Upload to DAM',
+];
+
+// Strip Python logger prefix; return empty for boring separator lines
+function cleanLine(text) {
+  const t = text.replace(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} - \S+ - \w+ - /, '').trim();
+  if (/^[=\-]{5,}$/.test(t) || !t) return '';
+  return t;
+}
+
+function showHero(id) {
+  ['shIdle','shRunning','shResult'].forEach(s =>
+    document.getElementById(s).classList.toggle('hidden', s !== id));
+}
+
+function showResult(ok, sub) {
+  const icon  = document.getElementById('shResultIcon');
+  const svg   = document.getElementById('shResultSvg');
+  icon.className = 'sh-result-icon ' + (ok ? 'ok' : 'err');
+  svg.setAttribute('stroke', ok ? '#22c55e' : '#ef4444');
+  svg.innerHTML = ok
+    ? '<polyline points="20 6 9 17 4 12"/>'
+    : '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>';
+  document.getElementById('shResultLabel').textContent = ok ? 'Erfolgreich' : 'Fehler';
+  document.getElementById('shResultSub').textContent   = sub || '';
+  if (!ok) {
+    document.getElementById('logErrBadge').classList.remove('hidden');
+    // Auto-expand details on error
+    if (!logOpen) toggleLog();
+  }
+  showHero('shResult');
+}
+
+function toggleLog() {
+  logOpen = !logOpen;
+  document.getElementById('logRaw').classList.toggle('open', logOpen);
+  document.getElementById('logToggle').classList.toggle('open', logOpen);
+}
 
 function onCardClick(id) {
+  if (workflowRunning) return;
   if (activeRollout === id) { closeRollout(id); return; }
   if (activeRollout !== null) closeRollout(activeRollout);
-
   document.getElementById('rollout-' + id).classList.add('active');
   activeRollout = id;
-
-  const input = document.getElementById('input-' + id);
-  if (input) setTimeout(() => input.focus(), 150);
+  const inp = document.getElementById('input-' + id);
+  if (inp) setTimeout(() => inp.focus(), 150);
 }
 
 function startWorkflow(id) {
-  const input = document.getElementById('input-' + id);
-  let value = null;
-  if (input && input.value) {
-    value = input.value.trim();
+  if (workflowRunning) return;
+  const inp = document.getElementById('input-' + id);
+  const value = inp && inp.value ? inp.value.trim() : null;
+
+  if ((id === 0 || id === 1 || id === 3) && !value) {
+    setStatus('Input fehlt', 'orange');
+    if (inp) { inp.classList.add('error'); setTimeout(() => inp.classList.remove('error'), 600); }
+    return;
   }
 
-  document.getElementById('statusText').textContent = 'Workflow läuft...';
-  document.getElementById('statusText').style.color = '#ff9f0a';
+  workflowRunning  = true;
+  activeWorkflowId = id;
+  lastStatusLine   = '';
+  document.getElementById('logContent').innerHTML = '';
+  document.getElementById('logErrBadge').classList.add('hidden');
+  if (logOpen) toggleLog();
+  setStatus('Workflow läuft…', 'orange', 'running');
 
-  setTimeout(() => {
-    addLog('✓ Workflow ' + id + ' ausgeführt!');
-    addLog('Input: ' + (value || 'keine'));
-    document.getElementById('statusText').textContent = 'Bereit';
-    document.getElementById('statusText').style.color = '#fff';
-  }, 1000);
+  document.getElementById('shWfName').textContent = WF_NAMES[id] || '';
+  document.getElementById('shLast').textContent   = '';
+  showHero('shRunning');
+
+  const card = document.querySelector('#cards .card:nth-child(' + (id * 2 + 1) + ')');
+  if (card) card.classList.add('running');
+
+  const startBtn = document.querySelector('#rollout-' + id + ' .rollout-start');
+  if (startBtn) { startBtn.textContent = 'Abbrechen'; startBtn.classList.add('stop-active'); startBtn.onclick = stopWorkflow; }
+
+  fetch('/api/run-workflow', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ workflow_id: id, input_value: value })
+  }).then(r => {
+    if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    function read() {
+      reader.read().then(({ done, value: chunk }) => {
+        if (done) { finish(card); return; }
+        buf += dec.decode(chunk, { stream: true });
+        const lines = buf.split('\n'); buf = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const msg = JSON.parse(line.slice(6));
+            if (msg.type === 'log') {
+              addLog(msg.text, msg.color);
+            } else if (msg.type === 'done') {
+              finish(card);
+              if (msg.code === 0) { setStatus('Erfolgreich ✓', 'green', ''); showResult(true, lastStatusLine); }
+              else                { setStatus('Fehler', 'red', 'error');      showResult(false, lastStatusLine); }
+            }
+          } catch(e) {}
+        }
+        read();
+      });
+    }
+    read();
+  }).catch(err => {
+    finish(card);
+    addLog('❌ ' + err.message, 'red');
+    setStatus('Fehler', 'red', 'error');
+    showResult(false, err.message);
+  });
+}
+
+function finish(card) {
+  workflowRunning = false;
+  if (card) card.classList.remove('running');
+  if (activeWorkflowId !== null) {
+    const btn = document.querySelector('#rollout-' + activeWorkflowId + ' .rollout-start');
+    if (btn) {
+      btn.textContent = 'Starten'; btn.classList.remove('stop-active');
+      const wfId = activeWorkflowId;
+      btn.onclick = () => startWorkflow(wfId);
+    }
+    activeWorkflowId = null;
+  }
+}
+
+function setStatus(text, color, cls) {
+  document.getElementById('stext').textContent = text;
+  document.getElementById('stext').style.color =
+    color === 'green'  ? '#22c55e' :
+    color === 'orange' ? '#f59e0b' :
+    color === 'red'    ? '#ef4444' : 'rgba(255,255,255,.35)';
+  document.getElementById('statusBar').className = 'status-bar' + (cls ? ' ' + cls : '');
 }
 
 function closeRollout(id) {
@@ -224,42 +943,78 @@ function closeRollout(id) {
   if (activeRollout === id) activeRollout = null;
 }
 
-function addLog(text) {
+function addLog(text, color) {
+  // Detect log level from Python logger format and upgrade color
+  if (color === 'normal') {
+    if (/ - ERROR - /.test(text) || / - CRITICAL - /.test(text)) color = 'red';
+    else if (/ - WARNING - /.test(text)) color = 'orange';
+  }
+  // Clean the line — strip timestamps + module prefix, skip separator lines
+  const cleaned = cleanLine(text);
+  if (!cleaned) return;
   const log = document.getElementById('logContent');
-  const line = document.createElement('div');
-  line.className = 'log-line';
-  line.textContent = text;
-  log.appendChild(line);
-  log.scrollTop = log.scrollHeight;
+  const el  = document.createElement('div');
+  el.className = 'log-line' + (color === 'red' ? ' err' : color === 'green' ? ' ok' : color === 'blue' ? ' info' : color === 'orange' ? ' warn' : '');
+  el.textContent = cleaned;
+  log.appendChild(el);
+  document.getElementById('logRaw').scrollTop = 999999;
+  // Update status ticker (skip technical/blue lines)
+  if (color !== 'blue') {
+    lastStatusLine = cleaned;
+    const el2 = document.getElementById('shLast');
+    if (el2) el2.textContent = cleaned.length > 80 ? cleaned.slice(0,77)+'…' : cleaned;
+  }
 }
 
 function copyLog() {
-  const log = document.getElementById('logContent').textContent;
-  navigator.clipboard.writeText(log);
-  alert('Log kopiert!');
+  const lines = [...document.getElementById('logContent').querySelectorAll('.log-line')]
+    .map(el => el.textContent).join('\n');
+  if (!lines.trim()) return;
+  navigator.clipboard.writeText(lines).then(() => {
+    const btn = document.getElementById('logCopy');
+    btn.classList.add('copied');
+    btn.querySelector('svg').outerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    btn.childNodes[btn.childNodes.length - 1].textContent = ' Kopiert';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Kopieren';
+    }, 2000);
+  }).catch(() => {});
 }
 
-// Navigation
+function stopWorkflow() {
+  fetch('/api/kill-workflow', { method: 'POST' }).catch(() => {});
+  addLog('⏹ Abbruch angefordert…', 'blue');
+  setStatus('Wird abgebrochen…', 'orange', 'running');
+}
+
+function openFolder(name) {
+  fetch('/api/open-folder', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({folder:name}) }).catch(()=>{});
+}
+
+// Python package check on load
+fetch('/api/python-check').then(r=>r.json()).then(d=>{ if(!d.ok) document.getElementById('pyWarn').classList.remove('hidden'); }).catch(()=>{});
+
 document.querySelectorAll('.nav-item').forEach(item => {
-  item.addEventListener('click', (e) => {
+  item.addEventListener('click', e => {
     e.preventDefault();
-    const view = item.dataset.view;
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     item.classList.add('active');
+    document.querySelectorAll('.view-dyn').forEach(v => v.remove());
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-
-    if (view === 'workflows') {
+    if (item.dataset.view === 'workflows') {
       document.getElementById('view-workflows').classList.add('active');
-    } else if (view === 'history') {
-      const histView = document.createElement('div');
-      histView.className = 'view active';
-      histView.innerHTML = '<div class="settings-section"><div class="settings-title">Exports</div><div class="admin-list"><div class="update-empty">Keine Exports gefunden</div></div></div>';
-      document.getElementById('view-workflows').parentElement.appendChild(histView);
+    } else {
+      const v = document.createElement('div');
+      v.className = 'view view-dyn active'; v.style.padding = '18px';
+      v.innerHTML = '<div class="section"><div class="section-title">' + item.textContent.trim() + '</div><div class="empty-msg">Keine Einträge vorhanden</div></div>';
+      document.querySelector('.main').insertBefore(v, document.querySelector('.status-bar'));
     }
   });
 });
 
-console.log('✓ PostPro Suite Desktop lädt erfolgreich!');
+const cg = document.getElementById('cursorGlow');
+document.addEventListener('mousemove', e => { cg.style.left = e.clientX+'px'; cg.style.top = e.clientY+'px'; });
 </script>
 </body>
 </html>
