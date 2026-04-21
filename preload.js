@@ -17,6 +17,8 @@ const updateAPI = {
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   downloadUpdate: () => ipcRenderer.invoke('download-update'),
   installUpdate: () => ipcRenderer.invoke('install-update'),
+  getInstallInfo: () => ipcRenderer.invoke('get-install-info'),
+  moveToApplications: () => ipcRenderer.invoke('move-to-applications'),
 };
 
 contextBridge.exposeInMainWorld('electron', {

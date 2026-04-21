@@ -10,6 +10,81 @@ let httpServer;
 let mainWindow;
 let updateAvailableInfo = null;
 
+// Check if app is on a read-only volume (e.g. DMG or Downloads folder)
+function isAppOnReadOnlyLocation() {
+  if (!app.isPackaged) return false;  // Ignore in dev mode
+  const appPath = app.getAppPath();
+  // App should be in /Applications (/System/Applications is system apps)
+  const isInApplications = appPath.includes('/Applications/') && !appPath.includes('/Volumes/');
+  return !isInApplications;
+}
+
+// Prompt user to move app to Applications folder on startup
+function promptMoveToApplications() {
+  if (!app.isPackaged) return;
+  if (process.platform !== 'darwin') return;
+  if (!isAppOnReadOnlyLocation()) return;
+
+  const choice = dialog.showMessageBoxSync({
+    type: 'warning',
+    buttons: ['Jetzt verschieben und neu starten', 'Ignorieren'],
+    defaultId: 0,
+    cancelId: 1,
+    title: 'App muss in "Programme" installiert werden',
+    message: 'PostPro Suite läuft gerade von einem schreibgeschützten Ort.',
+    detail: 'Automatische Updates funktionieren nur, wenn die App im Ordner "Programme" liegt.\n\nAktueller Pfad:\n' + app.getAppPath() + '\n\nSoll die App jetzt automatisch nach /Programme verschoben werden? Die App wird dann neu gestartet.'
+  });
+
+  if (choice === 0) {
+    try {
+      app.moveToApplicationsFolder({
+        conflictHandler: (conflictType) => {
+          if (conflictType === 'exists') {
+            const overwrite = dialog.showMessageBoxSync({
+              type: 'question',
+              buttons: ['Überschreiben', 'Abbrechen'],
+              defaultId: 0,
+              cancelId: 1,
+              message: 'Eine andere Version von PostPro Suite existiert bereits in /Programme.',
+              detail: 'Soll diese ersetzt werden?'
+            });
+            return overwrite === 0;
+          }
+          return true;
+        }
+      });
+    } catch (err) {
+      dialog.showErrorBox('Verschieben fehlgeschlagen',
+        'Die App konnte nicht automatisch verschoben werden.\n\n' +
+        'Bitte manuell: App aus dem aktuellen Ordner in /Programme ziehen.\n\n' +
+        'Fehler: ' + err.message);
+    }
+  }
+}
+
+// IPC handler: renderer can query installation location
+ipcMain.handle('get-install-info', () => {
+  return {
+    isPackaged: app.isPackaged,
+    appPath: app.getAppPath(),
+    isReadOnly: isAppOnReadOnlyLocation(),
+    platform: process.platform
+  };
+});
+
+// IPC: trigger move to Applications folder
+ipcMain.handle('move-to-applications', async () => {
+  try {
+    if (process.platform !== 'darwin') {
+      return {success: false, error: 'Nur auf macOS verfügbar'};
+    }
+    app.moveToApplicationsFolder();
+    return {success: true};
+  } catch (err) {
+    return {success: false, error: err.message};
+  }
+});
+
 // Check if user is configured
 function isUserConfigured() {
   // In packaged app, files are in app.asar.unpacked
@@ -96,6 +171,9 @@ function setupAutoUpdateCheck() {
 }
 
 app.on('ready', async () => {
+  // Check if app is in /Applications (needed for auto-updates on macOS)
+  promptMoveToApplications();
+
   // First run setup
   try {
     new Installer().run();
@@ -106,8 +184,12 @@ app.on('ready', async () => {
   await startServer();
   createWindow();
 
-  // Setup auto-update checking
-  setupAutoUpdateCheck();
+  // Setup auto-update checking (only if app is in Applications)
+  if (!isAppOnReadOnlyLocation()) {
+    setupAutoUpdateCheck();
+  } else {
+    console.warn('⚠️ Auto-Updates deaktiviert: App nicht in /Programme');
+  }
 });
 
 app.on('window-all-closed', () => {

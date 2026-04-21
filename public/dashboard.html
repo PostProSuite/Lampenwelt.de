@@ -230,6 +230,14 @@ body::after {
 .toast{position:fixed;bottom:40px;right:20px;background:linear-gradient(135deg,rgba(34,197,94,.92),rgba(22,163,74,.88));color:#fff;padding:12px 18px;border-radius:12px;font-size:13px;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.1);z-index:9999;display:flex;align-items:center;gap:10px;transform:translateX(120%);transition:transform .5s cubic-bezier(.22,1,.36,1);max-width:340px;}
 .toast.show{transform:translateX(0);}
 .toast-icon{font-size:18px;}
+.readonly-warning{border:1px solid rgba(245,158,11,.35);background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(245,158,11,.04));border-radius:16px;padding:18px;margin-bottom:16px;color:#fff;}
+.readonly-warning .rwtitle{font-weight:600;color:#f59e0b;margin-bottom:8px;font-size:14px;display:flex;align-items:center;gap:8px;}
+.readonly-warning .rwtext{font-size:12.5px;color:rgba(255,255,255,.75);line-height:1.6;margin-bottom:12px;}
+.readonly-warning .rwpath{font-family:ui-monospace,monospace;font-size:11px;color:rgba(255,255,255,.5);background:rgba(0,0,0,.25);padding:6px 10px;border-radius:6px;margin:6px 0 12px;word-break:break-all;}
+.readonly-warning button{padding:9px 16px;margin-right:8px;border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.15);color:#fff;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;}
+.readonly-warning button:hover{background:rgba(245,158,11,.25);border-color:rgba(245,158,11,.6);}
+.readonly-warning button.primary{background:#f59e0b;border-color:#f59e0b;color:#000;}
+.readonly-warning button.primary:hover{background:#d97706;}
 @keyframes viewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── WORKFLOW LAYOUT ── */
@@ -831,6 +839,16 @@ body::after {
   <div class="view" id="view-updates">
     <div class="section">
       <div class="section-title">Updates Manager</div>
+
+      <!-- Read-only volume warning (shown if app is not in /Applications) -->
+      <div id="readonly-warning" class="readonly-warning" style="display:none;">
+        <div class="rwtitle">⚠️ App nicht richtig installiert</div>
+        <div class="rwtext">Die App läuft gerade von einem schreibgeschützten Ort (z.B. DMG oder Downloads-Ordner). <strong>Automatische Updates funktionieren so nicht.</strong></div>
+        <div class="rwpath" id="readonly-path">--</div>
+        <div class="rwtext">Verschiebe die App jetzt automatisch nach <strong>/Programme</strong> – die App wird dann neu gestartet.</div>
+        <button class="primary" onclick="moveToApplications()">📦 Jetzt nach /Programme verschieben</button>
+        <button onclick="document.getElementById('readonly-warning').style.display='none'">Später</button>
+      </div>
 
       <!-- Update Notification (if update available) -->
       <div id="update-notification" class="update-notification" style="display:none;">
@@ -1469,10 +1487,35 @@ async function checkAndShowWelcomeToast() {
   }
 }
 
+async function checkInstallLocation() {
+  if (!window.updateAPI || !window.updateAPI.getInstallInfo) return;
+  try {
+    const info = await window.updateAPI.getInstallInfo();
+    if (info && info.isPackaged && info.isReadOnly) {
+      document.getElementById('readonly-warning').style.display = 'block';
+      document.getElementById('readonly-path').textContent = info.appPath || '';
+    }
+  } catch (err) {
+    console.warn('Install info check failed:', err);
+  }
+}
+
+async function moveToApplications() {
+  if (!window.updateAPI || !window.updateAPI.moveToApplications) return;
+  try {
+    await window.updateAPI.moveToApplications();
+    // App will relaunch automatically - no need to do anything else
+  } catch (err) {
+    alert('Verschieben fehlgeschlagen: ' + err.message +
+          '\n\nBitte App manuell von ihrem aktuellen Ordner in /Programme ziehen.');
+  }
+}
+
 // Load update status on page load
 document.addEventListener('DOMContentLoaded', () => {
   loadUpdateStatus();
   checkAndShowWelcomeToast();
+  checkInstallLocation();
 });
 
 // Refresh "last checked" timestamp every 30 seconds
