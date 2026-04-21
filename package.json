@@ -1,6 +1,6 @@
 {
   "name": "PostProSuite",
-  "version": "1.2.9",
+  "version": "1.2.10",
   "description": "PostPro Suite - Professional Image Processing Workflow",
   "main": "main.js",
   "homepage": "./",
@@ -46,10 +46,12 @@
         "zip"
       ],
       "category": "public.app-category.business",
-      "icon": "assets/icon.icns"
+      "icon": "assets/icon.icns",
+      "artifactName": "PostPro-Suite-${version}-${arch}-mac.${ext}"
     },
     "dmg": {
-      "sign": false
+      "sign": false,
+      "artifactName": "PostPro-Suite-${version}-${arch}.${ext}"
     },
     "publish": {
       "provider": "github",

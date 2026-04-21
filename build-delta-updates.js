@@ -14,8 +14,8 @@ const packageJson = require('./package.json');
 const VERSION = packageJson.version;
 
 const DIST_DIR = path.join(__dirname, 'dist');
-const DMG_FILE = `PostPro Suite-${VERSION}-arm64.dmg`;
-const ZIP_FILE = `PostPro Suite-${VERSION}-arm64-mac.zip`;
+const DMG_FILE = `PostPro-Suite-${VERSION}-arm64.dmg`;
+const ZIP_FILE = `PostPro-Suite-${VERSION}-arm64-mac.zip`;
 const DMG_BLOCKMAP = `${DMG_FILE}.blockmap`;
 const ZIP_BLOCKMAP = `${ZIP_FILE}.blockmap`;
 
