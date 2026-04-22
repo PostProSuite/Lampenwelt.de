@@ -1411,16 +1411,53 @@ async function startDownload() {
   addUpdateLog('📥 Download gestartet…');
 
   try {
-    // Signal server for state tracking
-    await fetch('/api/download-update', {method: 'POST'});
+    // Download via SSE (Server-Sent Events) for real-time progress
+    const response = await fetch('/api/download-update', {method: 'POST'});
 
-    // Actually trigger download via IPC to main process (electron-updater)
-    if (window.updateAPI && window.updateAPI.downloadUpdate) {
-      await window.updateAPI.downloadUpdate();
-      // Progress updates will come via IPC listeners
-      // When complete, 'update-downloaded' event will fire → onUpdateStatus
-    } else {
-      throw new Error('Update API nicht verfügbar (nur in gepackter App)');
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, {stream: true});
+      const lines = buffer.split('\n');
+
+      // Keep last incomplete line in buffer
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+
+            if (data.type === 'progress') {
+              // Update progress bar
+              const percent = data.percent || 0;
+              document.getElementById('progress-percent').textContent = percent;
+              document.getElementById('progress-fill').style.width = percent + '%';
+              addUpdateLog(`⬇️ ${data.downloaded}/${data.total} MB (${data.speed})`);
+            } else if (data.type === 'log') {
+              addUpdateLog(data.text);
+            } else if (data.type === 'done') {
+              if (data.status === 'success') {
+                setUpdateState('downloaded');
+                addUpdateLog('✓ Download abgeschlossen! Klicke "Installieren" zum Neustart.');
+              } else {
+                throw new Error(data.error || 'Download fehlgeschlagen');
+              }
+            }
+          } catch (parseErr) {
+            // Ignore JSON parse errors
+          }
+        }
+      }
     }
   } catch (err) {
     lastFailedAction = 'download';
@@ -1438,12 +1475,15 @@ async function installUpdate() {
   addUpdateLog('⚙️ Installiere Update - Neustart folgt…');
 
   try {
-    await fetch('/api/install-update', {method: 'POST'});
-    // Trigger actual install via IPC
-    if (window.updateAPI && window.updateAPI.installUpdate) {
-      await window.updateAPI.installUpdate();
+    const response = await fetch('/api/install-update', {method: 'POST'});
+    const result = await response.json();
+
+    if (result.success) {
+      addUpdateLog('✓ ' + (result.message || 'Neustart wird eingeleitet…'));
+      // App will restart automatically
+    } else {
+      throw new Error(result.error || 'Installation fehlgeschlagen');
     }
-    // App will restart
   } catch (err) {
     lastFailedAction = 'install';
     setUpdateState('downloaded');
