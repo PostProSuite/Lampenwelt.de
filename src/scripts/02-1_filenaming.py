@@ -148,18 +148,37 @@ def rename_files(directory):
 # PHASE 2: KLASSIFIKATION AN DAM SENDEN (async)
 # ============================================================
 
-async def send_put_request_async(session, unique_id, category_id):
-    """Send classification to DAM API"""
+async def send_remove_request_async(session, unique_id, category_id):
+    """Remove a category from asset in DAM (before setting new one)"""
+    try:
+        _access_token = get_dam_token(config)
+        url = f"https://api-rs.mycliplister.com/v2.2/apis/asset/category/remove?unique_id={unique_id}&category_id={category_id}"
+        headers = {'Authorization': f'Bearer {_access_token}', 'Content-Type': 'application/json; charset=utf-8'}
+        async with session.put(url, headers=headers, json={},
+                              timeout=aiohttp.ClientTimeout(total=config['API_REQUEST_TIMEOUT'])) as response:
+            if response.status in [200, 204]:
+                logger.info(f"Alte Kategorie {category_id} entfernt für {unique_id}")
+    except Exception:
+        pass  # Ignore – category may not have been set
+
+async def send_put_request_async(session, unique_id, target_category_id):
+    """Remove all other categories, then set the correct one in DAM"""
     try:
         _access_token = get_dam_token(config)
 
-        url = f"https://api-rs.mycliplister.com/v2.2/apis/asset/category/add?unique_id={unique_id}&category_id={category_id}"
+        # Step 1: Remove from all OTHER known categories first (prevents duplicates)
+        all_other_ids = [cid for cid in category_mapping.values() if cid and cid != target_category_id]
+        remove_tasks = [send_remove_request_async(session, unique_id, cid) for cid in all_other_ids]
+        await asyncio.gather(*remove_tasks, return_exceptions=True)
+
+        # Step 2: Add the correct category
+        url = f"https://api-rs.mycliplister.com/v2.2/apis/asset/category/add?unique_id={unique_id}&category_id={target_category_id}"
         headers = {'Authorization': f'Bearer {_access_token}', 'Content-Type': 'application/json; charset=utf-8'}
 
         async with session.put(url, headers=headers, json={},
                               timeout=aiohttp.ClientTimeout(total=config['API_REQUEST_TIMEOUT'])) as response:
             if response.status in [200, 204]:
-                logger.info(f"Kategorie für {unique_id} gesetzt")
+                logger.info(f"Kategorie {target_category_id} gesetzt für {unique_id}")
             else:
                 content = await response.text()
                 logger.warning(f"Fehler für {unique_id}: {response.status} - {content}")
@@ -169,32 +188,33 @@ async def send_put_request_async(session, unique_id, category_id):
         logger.warning(f"Fehler bei PUT-Request für {unique_id}: {e}")
 
 async def process_folder_async(session, folder_name, category_id):
-    """Process files in a folder"""
+    """Process files in a folder and update their DAM category"""
     try:
         folder_path = os.path.join(directory, folder_name)
-        if os.path.isdir(folder_path):
-            files = [f for f in os.listdir(folder_path) if not f.startswith('.')]
-            logger.info(f"Verarbeite {len(files)} Dateien in {folder_name}...")
-
-            for filename in files:
-                parts = filename.split('#')
-                if len(parts) > 1:
-                    unique_id = parts[1]
-                    await send_put_request_async(session, unique_id, category_id)
-                    await asyncio.sleep(config['API_REQUEST_DELAY'])
+        if not os.path.isdir(folder_path):
+            return
+        files = [f for f in os.listdir(folder_path) if not f.startswith('.')]
+        if not files:
+            return
+        logger.info(f"Verarbeite {len(files)} Dateien in {folder_name} → Kategorie {category_id}...")
+        for filename in files:
+            parts = filename.split('#')
+            if len(parts) > 1:
+                unique_id = parts[1]
+                await send_put_request_async(session, unique_id, category_id)
+                await asyncio.sleep(config['API_REQUEST_DELAY'])
     except Exception as e:
         logger.warning(f"Fehler bei Ordner-Verarbeitung {folder_name}: {e}")
 
 async def send_classification_to_dam():
-    """Send all classifications to DAM"""
+    """Send all classifications to DAM (remove old + set new category per file)"""
     try:
         connector = aiohttp.TCPConnector(ssl=True)
         async with aiohttp.ClientSession(connector=connector) as session:
-            tasks = [
-                process_folder_async(session, folder_name, cat_id)
-                for folder_name, cat_id in category_mapping.items() if cat_id
-            ]
-            await asyncio.gather(*tasks, return_exceptions=True)
+            # Sequentiell pro Ordner um Rate-Limits zu vermeiden
+            for folder_name, cat_id in category_mapping.items():
+                if cat_id:
+                    await process_folder_async(session, folder_name, cat_id)
         logger.info("Klassifikation für alle Bilder an DAM übermittelt")
         return True
     except Exception as e:

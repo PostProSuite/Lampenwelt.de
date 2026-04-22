@@ -195,9 +195,21 @@ CATEGORY_ID_TO_SUBFOLDER = {
     408736: 'B30-Dimensions',
     408720: 'B40-Neutral',
     408721: 'C-Detail',
-    408747: 'C95-Splitscreen',
+    408753: 'C50-Shade',
+    408752: 'C60-Material',
+    408751: 'C70-Switch',
+    408750: 'C80-Base_Stand',
+    408749: 'C90-Cable',
+    408747: 'C95-Split',       # war fälschlicherweise 'C95-Splitscreen'
     408722: 'D-Technical',
+    408756: 'D110-Remote',
+    408755: 'D120-Accesories',
     408723: 'E130-Graphics',
+    408778: 'E130-Graphics_DE',
+    408777: 'E130-Graphics_INT',
+    408776: 'E130-Graphics_ENG',
+    408762: 'F140-Group',
+    408760: 'G-UGC',
     408724: 'F-Inspirative',
 }
 
@@ -225,6 +237,15 @@ SUBFOLDER_MAP = {
     "technical":   "D-Technical",
     "neutral":     "B40-Neutral",
     "split":       "C95-Split",
+    "shade":       "C50-Shade",
+    "material":    "C60-Material",
+    "switch":      "C70-Switch",
+    "base_stand":  "C80-Base_Stand",
+    "cable":       "C90-Cable",
+    "remote":      "D110-Remote",
+    "accessories": "D120-Accesories",
+    "group":       "F140-Group",
+    "ugc":         "G-UGC",
 }
 
 
