@@ -6,6 +6,7 @@ const session = require('express-session');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
+const CustomUpdater = require('./lib/customUpdater');
 const app = express();
 
 // In the packaged .app, Python scripts are unpacked outside the .asar archive
@@ -123,6 +124,8 @@ const WORKFLOWS = [
   { id: 2, script: '02-1_filenaming.py', name: 'Image Classification' },
   { id: 3, script: '04-1_Jira-Final.py', name: 'Jira Ticket Completion' },
   { id: 4, script: '10-2_Upload-DAM-Direct.py', name: 'Upload to DAM' },
+  { id: 5, script: '06-X-Artikel.py', name: 'X-Artikel Zuordnung' },
+  { id: 6, script: '11-1_webenabled-nein.py', name: 'Web Enabled = Nein' },
 ];
 
 let runningProcess = null;
@@ -180,7 +183,7 @@ app.post('/api/run-workflow', (req, res) => {
   res.write(`data: ${JSON.stringify({ type: 'log', text: `[${timestamp}] ▶ Starting workflow: ${workflow.name}`, color: 'blue' })}\n\n`);
 
   // Check if input is required but missing
-  if ((workflow_id === 0 || workflow_id === 1 || workflow_id === 3) && !input_value) {
+  if ((workflow_id === 0 || workflow_id === 1 || workflow_id === 3 || workflow_id === 6) && !input_value) {
     res.write(`data: ${JSON.stringify({ type: 'log', text: '❌ Error: This workflow requires input', color: 'red' })}\n\n`);
     res.write(`data: ${JSON.stringify({ type: 'done', code: 1, status: 'error', message: 'Missing required input' })}\n\n`);
     res.end();
@@ -411,6 +414,7 @@ let updateState = {
   latestVersion: null,
   available: false,
   downloadSize: 0,
+  downloadUrl: null,         // Store for use during install
   releaseNotes: '',
   releaseDate: null,
   progress: {percent: 0, speed: 0, eta: null},
@@ -510,12 +514,14 @@ app.post('/api/check-updates', async (req, res) => {
     const currentVersion = getAppVersion();
     const comparison = compareVersions(currentVersion, latestVersion);
 
-    // Find DMG asset to get download size
-    const dmgAsset = (release.assets || []).find(a => a.name.endsWith('.dmg'));
+    // Find DMG asset to get download size and URL
+    const dmgAsset = (release.assets || []).find(a => a.name.includes('.dmg') && a.name.includes('arm64'));
     const downloadSize = dmgAsset ? dmgAsset.size : 0;
+    const downloadUrl = dmgAsset ? dmgAsset.browser_download_url : null;
 
     updateState.latestVersion = latestVersion;
     updateState.downloadSize = downloadSize;
+    updateState.downloadUrl = downloadUrl;
     updateState.releaseNotes = release.body || '';
     updateState.releaseDate = release.published_at || null;
 
@@ -546,21 +552,93 @@ app.post('/api/check-updates', async (req, res) => {
 });
 
 // POST /api/download-update
-// Just triggers via flag - actual download handled by electron-updater via IPC
-app.post('/api/download-update', (req, res) => {
+// Uses CustomUpdater to download, mount, and install the app
+app.post('/api/download-update', async (req, res) => {
+  if (!updateState.downloadUrl) {
+    return res.status(400).json({error: 'No download URL available. Check for updates first.'});
+  }
+
   updateState.current = 'downloading';
   updateState.progress = {percent: 0, speed: 0, eta: null};
-  res.json({success: true, message: 'Download triggered via IPC'});
+  updateState.error = null;
+
+  // SSE Headers for streaming progress
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  try {
+    const currentVersion = getAppVersion();
+    const updater = new CustomUpdater(currentVersion);
+
+    const timestamp = new Date().toLocaleTimeString('de-DE');
+    res.write(`data: ${JSON.stringify({
+      type: 'log',
+      text: `[${timestamp}] 📥 Starte Update-Installation für v${updateState.latestVersion}...`,
+      color: 'blue'
+    })}\n\n`);
+
+    // Call install with progress callback
+    await updater.install(updateState.downloadUrl, (progress) => {
+      updateState.progress = {
+        percent: progress.percent,
+        downloaded: progress.downloaded,
+        total: progress.total,
+        speed: progress.speed
+      };
+
+      res.write(`data: ${JSON.stringify({
+        type: 'progress',
+        percent: progress.percent,
+        downloaded: progress.downloaded,
+        total: progress.total,
+        speed: progress.speed + ' MB/s'
+      })}\n\n`);
+    });
+
+    // Installation complete - app is replaced
+    updateState.current = 'downloaded';
+    const doneTimestamp = new Date().toLocaleTimeString('de-DE');
+    res.write(`data: ${JSON.stringify({
+      type: 'log',
+      text: `[${doneTimestamp}] ✓ App erfolgreich aktualisiert. Klicke auf "Jetzt Installieren" zum Neustart.`,
+      color: 'green'
+    })}\n\n`);
+    res.write(`data: ${JSON.stringify({
+      type: 'done',
+      status: 'success'
+    })}\n\n`);
+    res.end();
+  } catch (err) {
+    updateState.current = 'error';
+    updateState.error = err.message;
+    const errorTimestamp = new Date().toLocaleTimeString('de-DE');
+    res.write(`data: ${JSON.stringify({
+      type: 'log',
+      text: `[${errorTimestamp}] ❌ Update-Fehler: ${err.message}`,
+      color: 'red'
+    })}\n\n`);
+    res.write(`data: ${JSON.stringify({
+      type: 'done',
+      status: 'error',
+      error: err.message
+    })}\n\n`);
+    res.end();
+  }
 });
 
 // POST /api/install-update
+// Signals main.js to restart the app with the new version
 app.post('/api/install-update', (req, res) => {
-  updateState.current = 'installing';
-
   try {
-    // Installation is triggered from main.js
-    // App will restart, so we don't need to do much here
-    res.json({success: true, message: 'Update installation initiated'});
+    updateState.current = 'installing';
+    // Write a flag file that main.js will detect to trigger restart
+    const flagPath = path.join(os.tmpdir(), 'postpro-restart-flag');
+    fs.writeFileSync(flagPath, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      action: 'restart'
+    }));
+    res.json({success: true, message: 'Neustart wird eingeleitet...'});
   } catch (err) {
     updateState.current = 'error';
     res.status(500).json({error: err.message});
