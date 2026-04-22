@@ -96,10 +96,59 @@ def get_dam_headers():
     }
 
 
-def update_asset_after_upload(unique_id, filename, subfolder=None):
+# EXIF-Keyword → DAM-Kategorie-ID
+# 02-1_filenaming.py schreibt diese Keywords per exiftool in Phase 5
+KEYWORD_TO_CATEGORY_ID = {
+    'Clipping':    408735, 'Freisteller': 408735,
+    'Neutral':     408720, 'Produktbild': 408720,
+    'Mood':        408719, 'Ambiente':    408719,
+    'Technical':   408722, 'Technisch':   408722,
+    'Dimensions':  408736,
+    'Detail':      408721,
+    'Shade':       408753, 'Schirm':      408753,
+    'Material':    408752,
+    'Switch':      408751, 'Schalter':    408751,
+    'Base_Stand':  408750,
+    'Cable':       408749, 'Kabel':       408749,
+    'Split':       408747,
+    'Remote':      408756, 'Fernbedienung': 408756,
+    'Accessories': 408755, 'Zubehoer':    408755,
+    'Group':       408762, 'Gruppe':      408762,
+    'UGC':         408760,
+    'Graphics':    408723, 'Grafik':      408723,
+}
+
+
+def get_exif_category(filepath):
+    """
+    Liest XMP:Subject Keywords aus der Bilddatei und gibt die passende
+    DAM-Kategorie-ID zurück. Fallback wenn kein Unterordner bekannt ist.
+    """
+    try:
+        with open(filepath, 'rb') as f:
+            raw = f.read()
+        # XMP-Paket suchen (im JPEG-Body enthalten)
+        start = raw.find(b'<rdf:RDF')
+        end   = raw.find(b'</rdf:RDF>')
+        if start == -1 or end == -1:
+            return None
+        xmp = raw[start:end + len('</rdf:RDF>')].decode('utf-8', errors='ignore')
+        # Keywords aus <rdf:li>...</rdf:li> extrahieren
+        keywords = re.findall(r'<rdf:li[^>]*>([^<]+)</rdf:li>', xmp)
+        for kw in keywords:
+            cat_id = KEYWORD_TO_CATEGORY_ID.get(kw.strip())
+            if cat_id:
+                logger.info(f"  EXIF-Keyword '{kw}' → Kategorie {cat_id}")
+                return cat_id
+    except Exception:
+        pass
+    return None
+
+
+def update_asset_after_upload(unique_id, filename, subfolder=None, filepath=None):
     """
     Nach erfolgreichem Insert: requestKey (SKU), Titel und webEnabled setzen.
-    Optional: Kategorie anhand des Unterordners korrigieren.
+    Kategorie: 1. aus Unterordner-Name, 2. aus EXIF-Keywords (gesetzt von 02-1_filenaming.py)
     """
     try:
         filename_no_ext = os.path.splitext(filename)[0]
@@ -127,10 +176,13 @@ def update_asset_after_upload(unique_id, filename, subfolder=None):
         else:
             logger.warning(f"  Metadaten-Update fehlgeschlagen {filename}: HTTP {resp.status_code}")
 
-        # Kategorie anhand Unterordner setzen (und "Input LWDE" entfernen)
+        # Kategorie bestimmen: 1. Unterordner, 2. EXIF-Keywords
         category_id = SUBFOLDER_TO_CATEGORY.get(subfolder) if subfolder else None
+        if not category_id and filepath and os.path.exists(filepath):
+            category_id = get_exif_category(filepath)
+
         if category_id:
-            # Alte Input-LWDE-Kategorie entfernen
+            # Input-LWDE-Kategorie entfernen
             remove_url = f"{DAM_API_BASE}/asset/category/remove?unique_id={unique_id}&category_id={INPUT_LWDE_CATEGORY_ID}"
             requests.put(remove_url, headers=get_dam_headers(), json={}, timeout=15)
 
@@ -138,9 +190,12 @@ def update_asset_after_upload(unique_id, filename, subfolder=None):
             add_url = f"{DAM_API_BASE}/asset/category/add?unique_id={unique_id}&category_id={category_id}"
             resp2 = requests.put(add_url, headers=get_dam_headers(), json={}, timeout=15)
             if resp2.status_code in [200, 204]:
-                logger.info(f"  Kategorie {subfolder} ({category_id}) gesetzt ✓")
+                cat_src = subfolder if subfolder else 'EXIF'
+                logger.info(f"  Kategorie {category_id} gesetzt [{cat_src}] ✓")
             else:
                 logger.warning(f"  Kategorie-Update fehlgeschlagen: HTTP {resp2.status_code}")
+        else:
+            logger.warning(f"  Keine Kategorie erkannt für {filename} — bleibt in Input LWDE")
 
     except Exception as e:
         logger.error(f"  Fehler beim Asset-Update nach Upload {filename}: {e}")
@@ -250,7 +305,7 @@ def upload_single_image(filepath, category_id, subfolder=None):
 
             # Step 4: Set requestKey, title, webEnabled and correct category
             if unique_id:
-                update_asset_after_upload(unique_id, filename, subfolder)
+                update_asset_after_upload(unique_id, filename, subfolder, filepath)
 
             return True
         else:
