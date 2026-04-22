@@ -245,23 +245,24 @@ def get_request_keys_from_json(unique_id):
         return []
 
 def update_asset(unique_id, new_title, token):
-    """Update asset title in DAM"""
+    """Update asset title in DAM (immer), und Products wenn requestKeys vorhanden"""
     try:
+        update_api_url = f"{base_url}/asset/update?unique_id={unique_id}"
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        data = {"title": new_title}
+
         request_keys = get_request_keys_from_json(unique_id)
         if request_keys:
-            update_api_url = f"{base_url}/asset/update?unique_id={unique_id}"
-            products_data = [{"title": new_title, "requestKey": rk, "keyType": 100} for rk in request_keys]
-            data = {"title": new_title, "products": products_data}
-            headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-
-            response = requests.put(update_api_url, headers=headers, json=data,
-                                   timeout=config['API_REQUEST_TIMEOUT'])
-            if response.status_code in [200, 204]:
-                logger.info(f"Titel für {unique_id} aktualisiert")
-            else:
-                logger.warning(f"Fehler bei {unique_id}: {response.status_code}")
+            data["products"] = [{"title": new_title, "requestKey": rk, "keyType": 100} for rk in request_keys]
         else:
-            logger.warning(f"Keine requestKeys für {unique_id} gefunden")
+            logger.warning(f"Keine requestKeys für {unique_id} – nur Titel wird aktualisiert")
+
+        response = requests.put(update_api_url, headers=headers, json=data,
+                               timeout=config['API_REQUEST_TIMEOUT'])
+        if response.status_code in [200, 204]:
+            logger.info(f"Titel für {unique_id} aktualisiert: {new_title}")
+        else:
+            logger.warning(f"Fehler bei {unique_id}: {response.status_code}")
     except requests.exceptions.Timeout:
         logger.error(f"Timeout beim Titel-Update für {unique_id}")
     except Exception as e:
