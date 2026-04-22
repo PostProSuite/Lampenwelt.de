@@ -381,6 +381,30 @@ body::after {
 .rollout-start:active{transform:scale(.96);}
 .rollout-start.stop-active{background:var(--red);box-shadow:0 4px 20px rgba(239,68,68,.38);}
 
+/* Clipping-Check Ergebnisbox */
+.clipping-result{
+  display:none;margin-top:11px;
+  border-radius:10px;padding:10px 13px;
+  font-size:11.5px;line-height:1.6;
+}
+.clipping-result.missing{
+  background:rgba(245,158,11,.08);
+  border:1px solid rgba(245,158,11,.22);
+}
+.clipping-result.complete{
+  background:rgba(34,197,94,.07);
+  border:1px solid rgba(34,197,94,.2);
+}
+.clipping-result .cr-label{
+  font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  margin-bottom:5px;
+}
+.clipping-result.missing .cr-label{ color:#f59e0b; }
+.clipping-result.complete .cr-label{ color:#22c55e; }
+.clipping-result .cr-skus{
+  color:var(--text);word-break:break-all;
+}
+
 .rollout-footer{
   border-top:1px solid rgba(255,255,255,.05);margin-top:10px;padding-top:6px;
   text-align:right;max-height:0;overflow:hidden;opacity:0;
@@ -749,6 +773,10 @@ body::after {
             <div class="rollout-noinput">
               <button class="rollout-start" onclick="startWorkflow(2)">Starten</button>
             </div>
+            <div class="clipping-result" id="clipping-result">
+              <div class="cr-label" id="clipping-label"></div>
+              <div class="cr-skus" id="clipping-skus"></div>
+            </div>
             <div class="rollout-footer" id="rfooter-2">
               <button class="rollout-copy hidden" id="copybtn-2" onclick="copyLog()">Kopieren</button>
               <button class="rollout-close" onclick="closeRollout(2)">Schliessen</button>
@@ -1041,6 +1069,31 @@ function autoProgress() {
   if (gap > 0.5) updateProgress(shProgress + gap * 0.13);
 }
 
+function showClippingResult(status, skus) {
+  const box   = document.getElementById('clipping-result');
+  const label = document.getElementById('clipping-label');
+  const list  = document.getElementById('clipping-skus');
+  if (!box) return;
+
+  box.className = 'clipping-result ' + (status === 'missing' ? 'missing' : 'complete');
+
+  if (status === 'missing') {
+    label.textContent = '⚠ Missing Clippings';
+    const skuArr = skus.split(',').map(s => s.trim()).filter(Boolean);
+    list.textContent  = skuArr.join(' · ');
+  } else {
+    label.textContent = '✓ Alle Clippings vorhanden';
+    list.textContent  = '';
+  }
+
+  box.style.display = 'block';
+}
+
+function resetClippingResult() {
+  const box = document.getElementById('clipping-result');
+  if (box) { box.style.display = 'none'; box.className = 'clipping-result'; }
+}
+
 const WF_NAMES = [
   'Download RAW (SKU)',
   'Download RAW (Category ID)',
@@ -1120,6 +1173,7 @@ function startWorkflow(id) {
   lastStatusLine   = '';
   document.getElementById('logContent').innerHTML = '';
   document.getElementById('logErrBadge').classList.add('hidden');
+  if (id === 2) resetClippingResult();
   if (logOpen) toggleLog();
   setStatus('Workflow läuft…', 'orange', 'running');
 
@@ -1168,6 +1222,8 @@ function startWorkflow(id) {
               } else {
                 autoProgress();
               }
+            } else if (msg.type === 'clipping_check') {
+              showClippingResult(msg.status, msg.skus);
             } else if (msg.type === 'done') {
               finish(card);
               if (msg.code === 0) { setStatus('Erfolgreich ✓', 'green', ''); showResult(true, lastStatusLine); }

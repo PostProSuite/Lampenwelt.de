@@ -207,6 +207,13 @@ app.post('/api/run-workflow', (req, res) => {
         const ts = new Date().toLocaleTimeString('de-DE');
         res.write(`data: ${JSON.stringify({ type: 'log', text: `[${ts}] ⬡ Lightroom wird geöffnet und synchronisiert…`, color: 'blue' })}\n\n`);
         triggerLightroomSync();
+      } else if (trimmed.startsWith('##CLIPPING_CHECK##')) {
+        // e.g. ##CLIPPING_CHECK##:missing:10050196, 10050197
+        //      ##CLIPPING_CHECK##:complete
+        const parts = trimmed.split(':');
+        const status = parts[1]; // 'missing' or 'complete'
+        const skus   = parts.slice(2).join(':').trim(); // SKU list or empty
+        res.write(`data: ${JSON.stringify({ type: 'clipping_check', status, skus })}\n\n`);
       } else {
         res.write(`data: ${JSON.stringify({ type: 'log', text: trimmed, color: 'normal' })}\n\n`);
       }
