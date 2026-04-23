@@ -188,6 +188,9 @@ app.on('ready', async () => {
   promptMoveToApplications();
 
   // Setup Python environment - check and install missing dependencies
+  const requiredPackages = ['requests', 'paramiko', 'Pillow', 'openpyxl', 'aiohttp', 'python-dotenv', 'jira', 'cryptography'];
+  let pythonSetupSuccess = false;
+
   try {
     console.log('🐍 Prüfe Python-Dependencies...');
     const setupScriptPath = app.isPackaged
@@ -196,15 +199,55 @@ app.on('ready', async () => {
 
     execSync(`python3 "${setupScriptPath}"`, { stdio: 'inherit' });
     console.log('✓ Python-Environment bereit');
+    pythonSetupSuccess = true;
   } catch (err) {
     console.error('⚠️ Python-Setup fehlgeschlagen:', err.message);
-    dialog.showErrorBox(
-      'Python-Dependencies fehlen',
-      'Einige Python-Dependencies konnten nicht installiert werden.\n\n' +
-      'Bitte installieren Sie diese manuell:\n' +
-      'python3 -m pip install -r requirements.txt\n\n' +
-      'Fehler: ' + err.message
-    );
+
+    // Show interactive dialog: user can choose to install packages now
+    const choice = dialog.showMessageBoxSync({
+      type: 'warning',
+      buttons: ['Jetzt installieren', 'Später', 'Abbrechen'],
+      defaultId: 0,
+      cancelId: 2,
+      title: 'Python-Packages fehlen',
+      message: 'Einige Python-Packages sind nicht installiert.',
+      detail: 'PostPro Suite benötigt folgende Packages:\n' + requiredPackages.join(', ') + '\n\nMöchten Sie diese jetzt installieren?\n\n(Dies öffnet das Terminal für die Installation)'
+    });
+
+    if (choice === 0) {
+      // User clicked "Jetzt installieren"
+      console.log('🔧 Installiere Python-Packages mit pip...');
+      try {
+        const pipCmd = `python3 -m pip install --user ${requiredPackages.join(' ')}`;
+        execSync(pipCmd, { stdio: 'inherit', shell: '/bin/bash' });
+        console.log('✓ Python-Packages erfolgreich installiert');
+        pythonSetupSuccess = true;
+      } catch (pipErr) {
+        console.error('❌ Pip-Installation fehlgeschlagen:', pipErr.message);
+        dialog.showErrorBox(
+          'Installation fehlgeschlagen',
+          'Die automatische Installation hat nicht funktioniert.\n\n' +
+          'Bitte führen Sie folgende Kommando manuell im Terminal aus:\n\n' +
+          `pip3 install --user ${requiredPackages.join(' ')}\n\n` +
+          'Nach der Installation bitte die App neu starten.'
+        );
+      }
+    } else if (choice === 1) {
+      // User clicked "Später"
+      console.warn('⚠️ Python-Setup aufgeschoben');
+      dialog.showWarningBox(
+        'Python-Setup später',
+        'Sie können die Installation später durchführen.\n\n' +
+        'Workflows können nicht ausgeführt werden, bis alle Packages installiert sind.\n\n' +
+        'Terminal-Kommando:\n' +
+        `pip3 install --user ${requiredPackages.join(' ')}`
+      );
+    } else {
+      // User clicked "Abbrechen"
+      console.error('❌ App startup cancelled - Python packages missing');
+      app.quit();
+      return;
+    }
   }
 
   // First run setup
