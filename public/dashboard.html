@@ -554,6 +554,24 @@ body::after {
 @keyframes dotErr{from{opacity:1}to{opacity:.3}}
 .stext{color:rgba(255,255,255,.35);transition:color .3s;}
 
+/* EXPORTS */
+.exports-container{display:flex;flex-direction:column;gap:12px;}
+.exports-loading{display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px;color:var(--text2);font-size:13px;}
+.spinner{width:20px;height:20px;border:2px solid rgba(255,255,255,.1);border-top-color:var(--text2);border-radius:50%;animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.exports-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:32px;text-align:center;}
+.empty-icon{font-size:40px;}
+.empty-text{font-size:13px;font-weight:600;color:var(--text);}
+.empty-sub{font-size:11px;color:var(--text2);}
+.exports-list{display:flex;flex-direction:column;gap:8px;}
+.export-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:8px;transition:all .2s;}
+.export-item:hover{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1);}
+.export-info{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;}
+.export-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.export-meta{display:flex;gap:12px;font-size:10px;color:var(--text2);}
+.export-btn{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--green);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;transition:all .2s;}
+.export-btn:hover{background:rgba(34,197,94,.2);border-color:rgba(34,197,94,.5);}
+
 /* Scrollbar */
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
@@ -983,6 +1001,28 @@ body::after {
     </div>
   </div>
 
+  <!-- EXPORTS VIEW -->
+  <div class="view" id="view-exports">
+    <div class="section">
+      <div class="section-title">Exporte</div>
+
+      <div class="exports-container">
+        <div class="exports-loading" id="exports-loading" style="display:none;">
+          <div class="spinner"></div>
+          <div>Lade Exporte...</div>
+        </div>
+
+        <div id="exports-empty" class="exports-empty" style="display:none;">
+          <div class="empty-icon">📄</div>
+          <div class="empty-text">Keine Exporte verfügbar</div>
+          <div class="empty-sub">Exporte werden erstellt, wenn der Workflow "Jira Ticket Completion" abgeschlossen ist.</div>
+        </div>
+
+        <div id="exports-list" class="exports-list"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- STATUS BAR -->
   <div class="status-bar" id="statusBar">
     <span class="sdot" id="sdot"></span>
@@ -1286,6 +1326,10 @@ document.querySelectorAll('.nav-item').forEach(item => {
       if (item.dataset.view === 'updates') {
         loadUpdateStatus();
       }
+      // Load exports if switching to exports view
+      if (item.dataset.view === 'exports') {
+        loadExports();
+      }
     } else {
       const v = document.createElement('div');
       v.className = 'view view-dyn active'; v.style.padding = '18px';
@@ -1297,6 +1341,59 @@ document.querySelectorAll('.nav-item').forEach(item => {
 
 const cg = document.getElementById('cursorGlow');
 document.addEventListener('mousemove', e => { cg.style.left = e.clientX+'px'; cg.style.top = e.clientY+'px'; });
+
+// ═══ EXPORTS MANAGEMENT ═══
+
+async function loadExports() {
+  try {
+    document.getElementById('exports-loading').style.display = 'flex';
+    document.getElementById('exports-empty').style.display = 'none';
+    document.getElementById('exports-list').innerHTML = '';
+
+    const response = await fetch('/api/get-exports');
+    if (!response.ok) throw new Error('Fehler beim Laden der Exporte');
+
+    const data = await response.json();
+    const exports = data.exports || [];
+
+    document.getElementById('exports-loading').style.display = 'none';
+
+    if (exports.length === 0) {
+      document.getElementById('exports-empty').style.display = 'flex';
+      return;
+    }
+
+    const listEl = document.getElementById('exports-list');
+    exports.forEach(exp => {
+      const item = document.createElement('div');
+      item.className = 'export-item';
+      item.innerHTML = `
+        <div class="export-info">
+          <div class="export-name">${escapeHtml(exp.name)}</div>
+          <div class="export-meta">
+            <span>${exp.size}</span>
+            <span>${exp.date}</span>
+          </div>
+        </div>
+        <a href="${exp.path}" download class="export-btn">⬇ Download</a>
+      `;
+      listEl.appendChild(item);
+    });
+  } catch (err) {
+    document.getElementById('exports-loading').style.display = 'none';
+    document.getElementById('exports-empty').style.display = 'flex';
+    document.getElementById('exports-empty').innerHTML = `
+      <div class="empty-icon">⚠️</div>
+      <div class="empty-text">Fehler beim Laden der Exporte</div>
+      <div class="empty-sub">${err.message}</div>
+    `;
+  }
+}
+
+function escapeHtml(text) {
+  const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'};
+  return text.replace(/[&<>"']/g, m => map[m]);
+}
 
 // ═══ UPDATE MANAGEMENT ═══
 

@@ -117,6 +117,59 @@ app.post('/api/login', (req, res) => {
   res.json({ success: true, user: VALID_USER });
 });
 
+// Get Exports
+app.get('/api/get-exports', (req, res) => {
+  try {
+    const exportsPath = path.join(resolveWorkspace(), '..', 'Excel-Exports');
+    if (!fs.existsSync(exportsPath)) {
+      return res.json({ exports: [] });
+    }
+
+    const files = fs.readdirSync(exportsPath)
+      .filter(f => f.endsWith('.xlsx') || f.endsWith('.xls'))
+      .map(f => {
+        const fullPath = path.join(exportsPath, f);
+        const stats = fs.statSync(fullPath);
+        return {
+          name: f,
+          size: (stats.size / 1024).toFixed(2) + ' KB',
+          date: new Date(stats.mtime).toLocaleString('de-CH'),
+          path: `/api/download-export/${encodeURIComponent(f)}`
+        };
+      })
+      .sort((a, b) => b.date.localeCompare(a.date)); // Newest first
+
+    res.json({ exports: files });
+  } catch (err) {
+    console.error('Fehler beim Laden der Exporte:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Download Export
+app.get('/api/download-export/:filename', (req, res) => {
+  try {
+    const filename = decodeURIComponent(req.params.filename);
+    // Prevent directory traversal
+    if (filename.includes('..') || filename.includes('/')) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+
+    const exportsPath = path.join(resolveWorkspace(), '..', 'Excel-Exports');
+    const filePath = path.join(exportsPath, filename);
+
+    // Verify file exists and is in exports dir
+    if (!filePath.startsWith(exportsPath) || !fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    res.download(filePath, filename);
+  } catch (err) {
+    console.error('Fehler beim Download:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ═══ WORKFLOW EXECUTION ═══
 const WORKFLOWS = [
   { id: 0, script: '00-SKU-based-json-2.py', name: 'Download RAW (SKU)' },
