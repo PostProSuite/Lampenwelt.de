@@ -21,11 +21,11 @@ const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/PostProSuite/Lampenwe
 const MANIFEST_URL = `${GITHUB_RAW_BASE}/scripts-manifest.json`;
 
 /**
- * User-writable override directory.
- * App bevorzugt Skripte hier gegenüber den eingebauten (app.asar.unpacked).
+ * User-writable override directory (base).
+ * Enthält Subdirs: src/scripts, public
  */
-function getUserScriptsDir() {
-  const base = path.join(os.homedir(), 'Library', 'Application Support', 'PostPro Suite', 'scripts');
+function getUserOverrideBase() {
+  const base = path.join(os.homedir(), 'Library', 'Application Support', 'PostPro Suite', 'overrides');
   if (!fs.existsSync(base)) {
     fs.mkdirSync(base, { recursive: true });
   }
@@ -33,13 +33,31 @@ function getUserScriptsDir() {
 }
 
 /**
- * Pfad zur bundled Skripte (read-only, in app.asar.unpacked)
+ * Legacy: für Python-Scripts gibt direkt das scripts-dir
+ */
+function getUserScriptsDir() {
+  const scripts = path.join(getUserOverrideBase(), 'src', 'scripts');
+  if (!fs.existsSync(scripts)) {
+    fs.mkdirSync(scripts, { recursive: true });
+  }
+  return scripts;
+}
+
+/**
+ * Pfad zur bundled app base (read-only, in app.asar.unpacked)
+ */
+function getBundledBase(appDir) {
+  if (appDir.includes('app.asar')) {
+    return appDir.replace('app.asar', 'app.asar.unpacked');
+  }
+  return appDir;
+}
+
+/**
+ * Pfad zur bundled Skripte (read-only)
  */
 function getBundledScriptsDir(appDir) {
-  if (appDir.includes('app.asar')) {
-    return path.join(appDir.replace('app.asar', 'app.asar.unpacked'), 'src', 'scripts');
-  }
-  return path.join(appDir, 'src', 'scripts');
+  return path.join(getBundledBase(appDir), 'src', 'scripts');
 }
 
 /**
@@ -91,11 +109,13 @@ async function fetchRemoteManifest() {
 }
 
 /**
- * Eine einzelne Datei vom GitHub-Repo laden und speichern
+ * Eine einzelne Datei vom GitHub-Repo laden und speichern.
+ * relativePath is z.B. "src/scripts/03-1_DAM-API-Request-Download.py"
+ * oder "public/dashboard.html"
  */
-async function downloadScript(relativePath, targetDir, expectedHash = null) {
-  const url = `${GITHUB_RAW_BASE}/src/scripts/${relativePath}`;
-  const targetPath = path.join(targetDir, relativePath);
+async function downloadFile(relativePath, targetBase, expectedHash = null) {
+  const url = `${GITHUB_RAW_BASE}/${relativePath}`;
+  const targetPath = path.join(targetBase, relativePath);
 
   // Ensure directory exists
   const targetDirname = path.dirname(targetPath);
@@ -138,13 +158,13 @@ async function checkAndUpdateScripts(appDir) {
       return result;
     }
 
-    const userDir = getUserScriptsDir();
-    const bundledDir = getBundledScriptsDir(appDir);
+    const userBase = getUserOverrideBase();
+    const bundledBase = getBundledBase(appDir);
 
     for (const [relativePath, meta] of Object.entries(remoteManifest.files)) {
       try {
-        const userFile = path.join(userDir, relativePath);
-        const bundledFile = path.join(bundledDir, relativePath);
+        const userFile = path.join(userBase, relativePath);
+        const bundledFile = path.join(bundledBase, relativePath);
 
         // Which file is the "current" one?
         // Priority: user-override > bundled
@@ -157,9 +177,9 @@ async function checkAndUpdateScripts(appDir) {
           continue;
         }
 
-        // Needs update - download to user dir (overrides bundled)
+        // Needs update - download to user-override base
         console.log(`📥 Update für ${relativePath}`);
-        await downloadScript(relativePath, userDir, meta.sha256);
+        await downloadFile(relativePath, userBase, meta.sha256);
         result.updated.push(relativePath);
       } catch (err) {
         console.warn(`⚠️ Fehler bei ${relativePath}:`, err.message);
@@ -168,10 +188,10 @@ async function checkAndUpdateScripts(appDir) {
     }
 
     if (result.updated.length > 0) {
-      console.log(`✓ ${result.updated.length} Skripte aktualisiert`);
+      console.log(`✓ ${result.updated.length} Dateien aktualisiert`);
     }
     if (result.skipped > 0) {
-      console.log(`ℹ ${result.skipped} Skripte bereits aktuell`);
+      console.log(`ℹ ${result.skipped} Dateien bereits aktuell`);
     }
 
     return result;
@@ -187,19 +207,36 @@ async function checkAndUpdateScripts(appDir) {
  * Bevorzugt user-override (frisch geladen) über bundled.
  *
  * Von server.js verwendet um Python-Skripte zu starten.
+ * scriptName: z.B. "03-1_DAM-API-Request-Download.py"
  */
-function resolveScriptPath(appDir, relativePath) {
-  const userPath = path.join(getUserScriptsDir(), relativePath);
+function resolveScriptPath(appDir, scriptName) {
+  const userPath = path.join(getUserScriptsDir(), scriptName);
   if (fs.existsSync(userPath)) {
     return userPath;
   }
-  const bundledPath = path.join(getBundledScriptsDir(appDir), relativePath);
+  const bundledPath = path.join(getBundledScriptsDir(appDir), scriptName);
+  return bundledPath;
+}
+
+/**
+ * Helper: gibt den EFFEKTIVEN Pfad zu einer public/ Datei zurück.
+ * Wichtig für HTML/CSS/JS-Deltas.
+ */
+function resolvePublicPath(appDir, fileName) {
+  const userPath = path.join(getUserOverrideBase(), 'public', fileName);
+  if (fs.existsSync(userPath)) {
+    return userPath;
+  }
+  const bundledPath = path.join(getBundledBase(appDir), 'public', fileName);
   return bundledPath;
 }
 
 module.exports = {
   checkAndUpdateScripts,
   resolveScriptPath,
+  resolvePublicPath,
   getUserScriptsDir,
+  getUserOverrideBase,
   getBundledScriptsDir,
+  getBundledBase,
 };

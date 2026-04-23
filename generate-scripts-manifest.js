@@ -11,11 +11,14 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const SCRIPTS_DIR = path.join(__dirname, 'src', 'scripts');
-const MANIFEST_PATH = path.join(__dirname, 'scripts-manifest.json');
+// Delta-update: Python scripts + UI (HTML/CSS/JS)
+// Updates zu diesen Dateien brauchen KEIN neues DMG
+const UPDATE_SOURCES = [
+  { dir: 'src/scripts', exts: ['.py', '.mlmodel'] },
+  { dir: 'public',      exts: ['.html', '.css', '.js', '.svg'] },
+];
 
-// File patterns to INCLUDE in manifest
-const INCLUDE_EXTENSIONS = ['.py', '.mlmodel'];
+const MANIFEST_PATH = path.join(__dirname, 'scripts-manifest.json');
 
 // Files/dirs to EXCLUDE
 const EXCLUDE_PATTERNS = [
@@ -24,31 +27,32 @@ const EXCLUDE_PATTERNS = [
   '.pyc',
   'JSON',         // Generated JSON files - not source
   'config',       // User-specific config
+  'assets',       // Large binaries/icons - keep bundled
 ];
 
-function shouldInclude(filePath, relativePath) {
+function shouldInclude(filePath, relativePath, allowedExts) {
   // Exclude patterns
   for (const pattern of EXCLUDE_PATTERNS) {
     if (relativePath.includes(pattern)) return false;
   }
-  // Include extensions
   const ext = path.extname(filePath);
-  return INCLUDE_EXTENSIONS.includes(ext);
+  return allowedExts.includes(ext);
 }
 
-function walkDir(dir, baseDir = dir, fileList = []) {
+function walkDir(dir, baseDir, allowedExts, pathPrefix, fileList = []) {
+  if (!fs.existsSync(dir)) return fileList;
   const files = fs.readdirSync(dir);
   for (const file of files) {
     const fullPath = path.join(dir, file);
-    const relativePath = path.relative(baseDir, fullPath);
+    const relativeToBase = path.relative(baseDir, fullPath);
+    const relativeToPrefix = path.join(pathPrefix, relativeToBase);
     const stat = fs.statSync(fullPath);
 
     if (stat.isDirectory()) {
-      // Skip excluded dirs
       if (EXCLUDE_PATTERNS.some(p => file === p)) continue;
-      walkDir(fullPath, baseDir, fileList);
-    } else if (shouldInclude(fullPath, relativePath)) {
-      fileList.push({ fullPath, relativePath });
+      walkDir(fullPath, baseDir, allowedExts, pathPrefix, fileList);
+    } else if (shouldInclude(fullPath, relativeToBase, allowedExts)) {
+      fileList.push({ fullPath, relativePath: relativeToPrefix });
     }
   }
   return fileList;
@@ -64,12 +68,19 @@ function generateManifest() {
 
   const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
 
-  if (!fs.existsSync(SCRIPTS_DIR)) {
-    console.error(`❌ Scripts directory not found: ${SCRIPTS_DIR}`);
+  const allFiles = [];
+  for (const source of UPDATE_SOURCES) {
+    const dir = path.join(__dirname, source.dir);
+    // pathPrefix = source.dir so 'scripts/foo.py' becomes 'src/scripts/foo.py' etc.
+    const files = walkDir(dir, dir, source.exts, source.dir);
+    allFiles.push(...files);
+  }
+
+  if (allFiles.length === 0) {
+    console.error('❌ No files found in any UPDATE_SOURCES');
     process.exit(1);
   }
 
-  const files = walkDir(SCRIPTS_DIR);
   const manifest = {
     version: pkg.version,
     generated: new Date().toISOString(),
@@ -78,9 +89,11 @@ function generateManifest() {
   };
 
   let totalSize = 0;
-  for (const { fullPath, relativePath } of files) {
+  for (const { fullPath, relativePath } of allFiles) {
     const stat = fs.statSync(fullPath);
-    manifest.files[relativePath] = {
+    // Normalize path separators for cross-platform
+    const normalizedPath = relativePath.split(path.sep).join('/');
+    manifest.files[normalizedPath] = {
       sha256: fileHash(fullPath),
       size: stat.size,
       mtime: stat.mtime.toISOString(),
@@ -91,7 +104,7 @@ function generateManifest() {
   fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2));
 
   console.log(`✓ Manifest generated: ${MANIFEST_PATH}`);
-  console.log(`   Files: ${files.length}`);
+  console.log(`   Files: ${allFiles.length}`);
   console.log(`   Total size: ${(totalSize / 1024).toFixed(1)} KB`);
   console.log(`   Version: ${manifest.version}`);
 }

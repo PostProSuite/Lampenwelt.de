@@ -95,8 +95,21 @@ app.use(session({
   cookie: { secure: false, maxAge: 1000 * 60 * 60 * 24 }
 }));
 
-// Statische Dateien
+// Statische Dateien:
+// 1) User-override (Delta-Updates) zuerst - so können UI-Fixes ohne DMG-Update ausgerollt werden
+// 2) Bundled public/ als Fallback
+const { getUserOverrideBase, resolvePublicPath } = require('./script-updater');
+const USER_PUBLIC_DIR = path.join(getUserOverrideBase(), 'public');
+if (fs.existsSync(USER_PUBLIC_DIR)) {
+  app.use(express.static(USER_PUBLIC_DIR));
+  console.log(`✓ User-override public/ aktiv: ${USER_PUBLIC_DIR}`);
+}
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Helper: sendet Public-Datei (user-override bevorzugt)
+function sendPublic(res, fileName) {
+  res.sendFile(resolvePublicPath(__dirname, fileName));
+}
 
 // ═══ SIMPLE AUTH SIMULATION ═══
 const VALID_USER = {
@@ -465,20 +478,14 @@ app.post('/api/setup-user', (req, res) => {
   }
 });
 
-// Setup Screen
-app.get('/setup', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'setup.html'));
-});
+// Setup Screen (user-override-aware)
+app.get('/setup', (req, res) => { sendPublic(res, 'setup.html'); });
 
 // Splash Screen
-app.get('/splash', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'splash.html'));
-});
+app.get('/splash', (req, res) => { sendPublic(res, 'splash.html'); });
 
 // Main Dashboard
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
-});
+app.get('/', (req, res) => { sendPublic(res, 'dashboard.html'); });
 
 // ═══ UPDATE MANAGEMENT ═══
 
@@ -728,8 +735,6 @@ app.post('/api/cancel-update', (req, res) => {
 });
 
 // Fallback für alle anderen Routes (SPA)
-app.use((req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
-});
+app.use((req, res) => { sendPublic(res, 'dashboard.html'); });
 
 module.exports = app;
