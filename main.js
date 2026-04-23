@@ -6,6 +6,7 @@ const fs = require('fs');
 const { execSync } = require('child_process');
 const expressApp = require('./server.js');
 const Installer = require('./installer.js');
+const { checkAndUpdateScripts } = require('./script-updater.js');
 
 let httpServer;
 
@@ -183,21 +184,51 @@ function setupAutoUpdateCheck() {
   }, 24 * 60 * 60 * 1000);
 }
 
+// Check if python3 is available on the system
+function checkPython3Available() {
+  try {
+    const version = execSync('python3 --version', { encoding: 'utf8', stdio: 'pipe' });
+    console.log(`🐍 Python gefunden: ${version.trim()}`);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
 app.on('ready', async () => {
   // Check if app is in /Applications (needed for auto-updates on macOS)
   promptMoveToApplications();
 
+  // Resolve setup script path (works in packaged and dev)
+  const setupScriptPath = __dirname.includes('app.asar')
+    ? path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'src', 'scripts', 'setup_python_env.py')
+    : path.join(__dirname, 'src', 'scripts', 'setup_python_env.py');
+
+  // CRITICAL: Check if python3 is installed at all
+  if (!checkPython3Available()) {
+    const choice = dialog.showMessageBoxSync({
+      type: 'error',
+      buttons: ['Python installieren (Browser)', 'App beenden'],
+      defaultId: 0,
+      cancelId: 1,
+      title: 'Python 3 nicht gefunden',
+      message: 'Python 3 ist nicht auf diesem System installiert.',
+      detail: 'PostPro Suite benötigt Python 3 zur Ausführung der Workflows.\n\nInstallationsoptionen:\n1. Download von python.org\n2. Homebrew: brew install python3\n3. macOS-System-Version (meist bereits installiert)'
+    });
+    if (choice === 0) {
+      require('electron').shell.openExternal('https://www.python.org/downloads/');
+    }
+    app.quit();
+    return;
+  }
+
   // Setup Python environment - check and install missing dependencies
-  const requiredPackages = ['requests', 'paramiko', 'Pillow', 'openpyxl', 'aiohttp', 'python-dotenv', 'jira', 'cryptography'];
+  const requiredPackages = ['requests', 'paramiko', 'Pillow', 'openpyxl', 'aiohttp', 'python-dotenv', 'jira', 'cryptography', 'urllib3<2.0', 'numpy'];
   let pythonSetupSuccess = false;
 
   try {
     console.log('🐍 Prüfe Python-Dependencies...');
-    const setupScriptPath = app.isPackaged
-      ? path.join(__dirname, 'src', 'scripts', 'setup_python_env.py')
-      : path.join(__dirname, 'src', 'scripts', 'setup_python_env.py');
-
-    execSync(`python3 "${setupScriptPath}"`, { stdio: 'inherit' });
+    execSync(`python3 "${setupScriptPath}"`, { stdio: 'inherit', timeout: 600000 });
     console.log('✓ Python-Environment bereit');
     pythonSetupSuccess = true;
   } catch (err) {
@@ -255,6 +286,23 @@ app.on('ready', async () => {
     new Installer().run();
   } catch (err) {
     console.error('Setup error:', err);
+  }
+
+  // Delta-Update: Check for individual updated Python scripts from GitHub
+  // This lets us fix bugs by pushing only the changed script files
+  // without requiring users to download the full DMG again.
+  try {
+    console.log('🔄 Prüfe auf Skript-Updates (Delta-Update)...');
+    const updateResult = await checkAndUpdateScripts(__dirname);
+    if (updateResult.updated.length > 0) {
+      console.log(`✓ ${updateResult.updated.length} Skripte aktualisiert:`, updateResult.updated);
+    }
+    if (updateResult.errors.length > 0) {
+      console.warn(`⚠ ${updateResult.errors.length} Skripte mit Fehlern`);
+    }
+  } catch (err) {
+    console.warn('⚠ Skript-Delta-Update nicht möglich (offline?):', err.message);
+    // Don't block startup if we can't update scripts
   }
 
   await startServer();

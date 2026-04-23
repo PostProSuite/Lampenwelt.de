@@ -51,7 +51,8 @@ def load_config():
         'JIRA_TICKET_PREFIX':       os.getenv('JIRA_TICKET_PREFIX', 'CREAMEDIA'),
         'LOG_LEVEL':                os.getenv('LOG_LEVEL', 'INFO'),
         'LOG_FILE':                 os.getenv('LOG_FILE', os.path.join(os.path.dirname(__file__), '..', 'logs', 'postpro.log')),
-        'API_REQUEST_TIMEOUT':      int(os.getenv('API_REQUEST_TIMEOUT', 120)),
+        # Minimum 120s timeout - DAM API can be slow, even if user's config has a lower value
+        'API_REQUEST_TIMEOUT':      max(120, int(os.getenv('API_REQUEST_TIMEOUT', 120))),
         'LIGHTROOM_STARTUP_DELAY':  int(os.getenv('LIGHTROOM_STARTUP_DELAY', 8)),
         'API_REQUEST_DELAY':        float(os.getenv('API_REQUEST_DELAY', 1)),
         'ASYNC_TASK_CONCURRENCY':   int(os.getenv('ASYNC_TASK_CONCURRENCY', 4)),
@@ -100,7 +101,7 @@ _dam_token_lock = threading.Lock()
 
 DAM_AUTH_URL = "https://api-as.mycliplister.com/oauth2/token"
 
-def _fetch_dam_token(client_id, client_secret, timeout=30):
+def _fetch_dam_token(client_id, client_secret, timeout=60):
     """Fetch a fresh DAM OAuth2 token."""
     import requests
     credentials = f"{client_id}:{client_secret}"
@@ -130,7 +131,7 @@ def get_dam_token(config):
             _dam_token, _dam_token_expires = _fetch_dam_token(
                 config['CLIPLISTER_CLIENT_ID'],
                 config['CLIPLISTER_CLIENT_SECRET'],
-                timeout=config.get('API_REQUEST_TIMEOUT', 30)
+                timeout=config.get('API_REQUEST_TIMEOUT', 120)
             )
     return _dam_token
 
@@ -141,6 +142,68 @@ def invalidate_dam_token():
     with _dam_token_lock:
         _dam_token = None
         _dam_token_expires = datetime.utcnow()
+
+# ============================================================
+# EXIFTOOL AUTO-DETECTION
+# ============================================================
+
+_exiftool_path_cache = None
+
+def find_exiftool():
+    """
+    Finde exiftool auf dem System (Apple Silicon, Intel Mac, Linux, etc.)
+    Gibt den Pfad zurück oder None wenn nicht gefunden.
+    Cached das Ergebnis für Performance.
+    """
+    global _exiftool_path_cache
+    if _exiftool_path_cache is not None:
+        return _exiftool_path_cache if _exiftool_path_cache != "NOT_FOUND" else None
+
+    # Prioritätsliste: Homebrew ARM, Homebrew Intel, System, PATH
+    candidates = [
+        '/opt/homebrew/bin/exiftool',      # Apple Silicon Homebrew
+        '/usr/local/bin/exiftool',          # Intel Mac Homebrew
+        '/usr/bin/exiftool',                # System install
+        '/opt/local/bin/exiftool',          # MacPorts
+    ]
+
+    for path in candidates:
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            _exiftool_path_cache = path
+            return path
+
+    # Letzter Versuch: PATH-Suche via 'which'
+    try:
+        result = subprocess.run(['which', 'exiftool'], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0 and result.stdout.strip():
+            path = result.stdout.strip()
+            if os.path.isfile(path):
+                _exiftool_path_cache = path
+                return path
+    except Exception:
+        pass
+
+    _exiftool_path_cache = "NOT_FOUND"
+    return None
+
+
+def require_exiftool(logger=None):
+    """
+    Wie find_exiftool() aber mit klarer Fehlermeldung wenn nicht vorhanden.
+    Gibt den Pfad zurück oder wirft eine FileNotFoundError.
+    """
+    path = find_exiftool()
+    if path is None:
+        msg = (
+            "exiftool ist nicht installiert!\n"
+            "Bitte installieren mit:\n"
+            "  brew install exiftool\n"
+            "Oder download von: https://exiftool.org"
+        )
+        if logger:
+            logger.error(msg)
+        raise FileNotFoundError(msg)
+    return path
 
 # ============================================================
 # NATIVE macOS DIALOG HELPERS (osascript)
@@ -252,8 +315,13 @@ SUBFOLDER_MAP = {
 def _move_single_file_by_keywords(file_path, logger=None):
     """Move one file to the correct subfolder based on its exiftool keywords."""
     try:
+        exiftool = find_exiftool()
+        if not exiftool:
+            if logger:
+                logger.warning("exiftool nicht gefunden - überspringe keyword-move")
+            return
         result = subprocess.run(
-            ["/opt/homebrew/bin/exiftool", "-keywords", file_path],
+            [exiftool, "-keywords", file_path],
             capture_output=True, text=True, timeout=5
         )
         if result.returncode != 0:
@@ -424,24 +492,85 @@ def handle_errors(logger=None, default_return=None):
 # ============================================================
 
 def get_api_timeout(config):
-    return config.get('API_REQUEST_TIMEOUT', 30)
+    return config.get('API_REQUEST_TIMEOUT', 120)
 
 def get_api_delay(config):
     return config.get('API_REQUEST_DELAY', 1)
+
+
+def requests_with_retry(method, url, max_retries=3, logger=None, **kwargs):
+    """
+    Wrapper um requests.{get,post,put,delete} mit automatischem Retry bei Timeouts/5xx.
+    Exponential backoff: 2s, 4s, 8s.
+
+    Usage:
+      response = requests_with_retry('get', url, headers=..., timeout=120)
+    """
+    import requests
+    import time as _time
+
+    for attempt in range(max_retries + 1):
+        try:
+            method_func = getattr(requests, method.lower())
+            response = method_func(url, **kwargs)
+
+            # Retry on 5xx (server errors)
+            if 500 <= response.status_code < 600 and attempt < max_retries:
+                wait = 2 ** (attempt + 1)
+                if logger:
+                    logger.warning(f"HTTP {response.status_code} von {url} - Retry in {wait}s ({attempt+1}/{max_retries})")
+                _time.sleep(wait)
+                continue
+
+            return response
+
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            if attempt < max_retries:
+                wait = 2 ** (attempt + 1)
+                if logger:
+                    logger.warning(f"{type(e).__name__} für {url} - Retry in {wait}s ({attempt+1}/{max_retries})")
+                _time.sleep(wait)
+            else:
+                if logger:
+                    logger.error(f"{type(e).__name__} für {url} - alle {max_retries} Versuche fehlgeschlagen")
+                raise
+
+    # Shouldn't reach here, but just in case
+    raise requests.exceptions.RetryError(f"All {max_retries} retries failed for {url}")
 
 # ============================================================
 # PATH HELPERS
 # ============================================================
 
 def get_base_folder():
+    """
+    Liefert das 'src' Verzeichnis der bundled App.
+    Bevorzugt POSTPRO_BUNDLED_SRC (gesetzt von server.js),
+    damit Delta-Update-Skripte (die außerhalb der App laufen)
+    trotzdem das richtige bundled-dir finden.
+    """
+    bundled_src = os.environ.get('POSTPRO_BUNDLED_SRC', '').strip()
+    if bundled_src and os.path.isdir(bundled_src):
+        return os.path.abspath(bundled_src)
     return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+def get_bundled_scripts_dir():
+    """
+    Liefert das scripts/ Verzeichnis der bundled App.
+    Wichtig für Assets wie das ML-Modell oder die JSON/ folder,
+    die NICHT im user-override verfügbar sind.
+    """
+    bundled_scripts = os.environ.get('POSTPRO_BUNDLED_SCRIPTS', '').strip()
+    if bundled_scripts and os.path.isdir(bundled_scripts):
+        return os.path.abspath(bundled_scripts)
+    return os.path.join(get_base_folder(), 'scripts')
 
 def get_folder(folder_name):
     return os.path.join(get_base_folder(), folder_name)
 
 def get_paths():
     base = get_base_folder()
-    scripts_dir = os.path.join(base, 'scripts')
+    scripts_dir = get_bundled_scripts_dir()
 
     # Workspace wird bevorzugt aus config.env (POSTPRO_WORKSPACE) gelesen.
     # Das macht den Pfad unabhaengig davon, von wo das Skript gestartet wird

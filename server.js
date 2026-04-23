@@ -7,12 +7,17 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const CustomUpdater = require('./lib/customUpdater');
+const { resolveScriptPath, getUserScriptsDir } = require('./script-updater');
 const app = express();
 
 // In the packaged .app, Python scripts are unpacked outside the .asar archive
 const SCRIPTS_DIR = __dirname.includes('app.asar')
   ? path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'src', 'scripts')
   : path.join(__dirname, 'src', 'scripts');
+
+// User-override dir for delta-updated scripts
+// Python will look here FIRST, then fall back to SCRIPTS_DIR
+const USER_SCRIPTS_DIR = getUserScriptsDir();
 
 // Load config.env for Python scripts
 // In packaged app, files are in app.asar.unpacked
@@ -225,8 +230,8 @@ app.post('/api/run-workflow', (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
-  // Build command
-  const scriptPath = path.join(SCRIPTS_DIR, workflow.script);
+  // Build command - prefer user-override (delta-updated) over bundled
+  const scriptPath = resolveScriptPath(__dirname, workflow.script);
   const pythonArgs = input_value ? [scriptPath, input_value] : [scriptPath];
 
   // Log workflow start
@@ -244,6 +249,17 @@ app.post('/api/run-workflow', (req, res) => {
   // Start Python process with config environment variables + input value
   const spawnEnv = { ...pythonEnvVars };
   if (input_value) spawnEnv['POSTPRO_INPUT'] = input_value;
+
+  // PYTHONPATH: user-override-dir FIRST, then bundled - so updated _utils.py wins
+  // This allows delta-updating individual scripts without touching others
+  const existingPythonPath = spawnEnv['PYTHONPATH'] ? `:${spawnEnv['PYTHONPATH']}` : '';
+  spawnEnv['PYTHONPATH'] = `${USER_SCRIPTS_DIR}:${SCRIPTS_DIR}${existingPythonPath}`;
+
+  // Bundled-paths als env vars, damit _utils.py Assets findet (ML-Modell, JSON)
+  // auch wenn es aus dem user-override-dir geladen wurde
+  spawnEnv['POSTPRO_BUNDLED_SCRIPTS'] = SCRIPTS_DIR;
+  spawnEnv['POSTPRO_BUNDLED_SRC'] = path.dirname(SCRIPTS_DIR);
+
   const python = spawn('python3', pythonArgs, { env: spawnEnv, cwd: SCRIPTS_DIR });
   runningProcess = python;
   let hasError = false;

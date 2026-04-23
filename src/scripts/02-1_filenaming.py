@@ -336,11 +336,16 @@ def add_keywords_to_file(file_path, keywords):
     """Add keywords to file via exiftool (works for JPG, PNG, TIF)"""
     try:
         import subprocess
+        from _utils import find_exiftool
+        exiftool = find_exiftool()
+        if not exiftool:
+            logger.warning(f"exiftool nicht gefunden - überspringe Keywords für {file_path}")
+            return
         for keyword in keywords:
             try:
                 # Use XMP:Subject (works for JPG, PNG, TIF, etc.)
                 subprocess.run(
-                    ["/opt/homebrew/bin/exiftool", "-overwrite_original", f"-XMP:Subject+={keyword}", file_path],
+                    [exiftool, "-overwrite_original", f"-XMP:Subject+={keyword}", file_path],
                     capture_output=True, timeout=10, check=True
                 )
             except subprocess.TimeoutExpired:

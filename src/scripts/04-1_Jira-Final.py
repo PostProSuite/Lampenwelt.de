@@ -57,11 +57,8 @@ webcheck_path      = paths['web_check']           # 02-Webcheck
 upload_path        = paths['upload']               # 03-Upload
 excel_exports_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "exports")
 
-EXIFTOOL = os.environ.get(
-    'EXIFTOOL_PATH',
-    '/opt/homebrew/bin/exiftool' if os.path.exists('/opt/homebrew/bin/exiftool')
-    else '/usr/local/bin/exiftool'
-)
+from _utils import find_exiftool
+EXIFTOOL = os.environ.get('EXIFTOOL_PATH') or find_exiftool() or '/opt/homebrew/bin/exiftool'
 
 # Jira
 jira_server = config['JIRA_SERVER']
