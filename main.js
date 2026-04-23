@@ -187,6 +187,26 @@ app.on('ready', async () => {
   // Check if app is in /Applications (needed for auto-updates on macOS)
   promptMoveToApplications();
 
+  // Setup Python environment - check and install missing dependencies
+  try {
+    console.log('🐍 Prüfe Python-Dependencies...');
+    const setupScriptPath = app.isPackaged
+      ? path.join(__dirname, 'src', 'scripts', 'setup_python_env.py')
+      : path.join(__dirname, 'src', 'scripts', 'setup_python_env.py');
+
+    execSync(`python3 "${setupScriptPath}"`, { stdio: 'inherit' });
+    console.log('✓ Python-Environment bereit');
+  } catch (err) {
+    console.error('⚠️ Python-Setup fehlgeschlagen:', err.message);
+    dialog.showErrorBox(
+      'Python-Dependencies fehlen',
+      'Einige Python-Dependencies konnten nicht installiert werden.\n\n' +
+      'Bitte installieren Sie diese manuell:\n' +
+      'python3 -m pip install -r requirements.txt\n\n' +
+      'Fehler: ' + err.message
+    );
+  }
+
   // First run setup
   try {
     new Installer().run();
