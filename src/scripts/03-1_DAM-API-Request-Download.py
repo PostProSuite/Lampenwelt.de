@@ -76,7 +76,7 @@ def clear_input_batchfiles():
 # PHASE 1: API
 # ============================================================
 
-def get_api_response(category_id, offset):
+def get_api_response(category_id, offset, retry_count=0, max_retries=3):
     try:
         token = get_dam_token(config)
         api_url = (
@@ -87,12 +87,18 @@ def get_api_response(category_id, offset):
         response = requests.get(api_url, headers=headers, timeout=config['API_REQUEST_TIMEOUT'])
         if response.status_code == 401:
             invalidate_dam_token()
-            return get_api_response(category_id, offset)
+            return get_api_response(category_id, offset, retry_count, max_retries)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.Timeout:
-        logger.error(f"API-Timeout für Category {category_id}, Offset {offset}")
-        raise
+        if retry_count < max_retries:
+            retry_count += 1
+            logger.warning(f"API-Timeout für Category {category_id}, Offset {offset} - Versuche {retry_count}/{max_retries}...")
+            time.sleep(2 ** retry_count)  # Exponential backoff: 2s, 4s, 8s
+            return get_api_response(category_id, offset, retry_count, max_retries)
+        else:
+            logger.error(f"API-Timeout für Category {category_id}, Offset {offset} - Alle {max_retries} Versuche fehlgeschlagen")
+            raise
     except requests.exceptions.RequestException as e:
         logger.error(f"API-Fehler für Category {category_id}: {e}")
         raise
@@ -153,7 +159,7 @@ JPG_QUALITY = 95  # Hohe Qualität – visuell verlustfrei
 DOWNLOAD_CONCURRENCY = 8  # Parallele Downloads
 
 
-def _download_single_asset(asset):
+def _download_single_asset(asset, retry_count=0, max_retries=2):
     """Download + optional JPG-Konvertierung eines einzelnen Assets.
     Wird parallel ausgeführt. Return: (status, filename_or_error)"""
     try:
@@ -172,8 +178,16 @@ def _download_single_asset(asset):
             return ('skip', f"Keine Links: {asset.get('title')}")
 
         image_url = links[0].get('location') + "?format=source&strip=no&quality=100"
-        response = requests.get(image_url, timeout=config['API_REQUEST_TIMEOUT'])
-        response.raise_for_status()
+        try:
+            response = requests.get(image_url, timeout=config['API_REQUEST_TIMEOUT'])
+            response.raise_for_status()
+        except requests.exceptions.Timeout:
+            if retry_count < max_retries:
+                retry_count += 1
+                time.sleep(1)  # Kurze Pause vor Retry
+                return _download_single_asset(asset, retry_count, max_retries)
+            else:
+                return ('error', f"{asset.get('title', '?')}: Timeout nach {max_retries} Versuchen")
 
         subfolder = None
         for category in asset.get('categories', []):

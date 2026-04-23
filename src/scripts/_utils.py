@@ -51,7 +51,7 @@ def load_config():
         'JIRA_TICKET_PREFIX':       os.getenv('JIRA_TICKET_PREFIX', 'CREAMEDIA'),
         'LOG_LEVEL':                os.getenv('LOG_LEVEL', 'INFO'),
         'LOG_FILE':                 os.getenv('LOG_FILE', os.path.join(os.path.dirname(__file__), '..', 'logs', 'postpro.log')),
-        'API_REQUEST_TIMEOUT':      int(os.getenv('API_REQUEST_TIMEOUT', 30)),
+        'API_REQUEST_TIMEOUT':      int(os.getenv('API_REQUEST_TIMEOUT', 120)),
         'LIGHTROOM_STARTUP_DELAY':  int(os.getenv('LIGHTROOM_STARTUP_DELAY', 8)),
         'API_REQUEST_DELAY':        float(os.getenv('API_REQUEST_DELAY', 1)),
         'ASYNC_TASK_CONCURRENCY':   int(os.getenv('ASYNC_TASK_CONCURRENCY', 4)),
