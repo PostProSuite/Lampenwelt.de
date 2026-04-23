@@ -124,8 +124,6 @@ const WORKFLOWS = [
   { id: 2, script: '02-1_filenaming.py', name: 'Image Classification' },
   { id: 3, script: '04-1_Jira-Final.py', name: 'Jira Ticket Completion' },
   { id: 4, script: '10-2_Upload-DAM-Direct.py', name: 'Upload to DAM' },
-  { id: 5, script: '06-X-Artikel.py', name: 'X-Artikel Zuordnung' },
-  { id: 6, script: '11-1_webenabled-nein.py', name: 'Web Enabled = Nein' },
 ];
 
 let runningProcess = null;
@@ -183,7 +181,7 @@ app.post('/api/run-workflow', (req, res) => {
   res.write(`data: ${JSON.stringify({ type: 'log', text: `[${timestamp}] ▶ Starting workflow: ${workflow.name}`, color: 'blue' })}\n\n`);
 
   // Check if input is required but missing
-  if ((workflow_id === 0 || workflow_id === 1 || workflow_id === 3 || workflow_id === 6) && !input_value) {
+  if ((workflow_id === 0 || workflow_id === 1 || workflow_id === 3) && !input_value) {
     res.write(`data: ${JSON.stringify({ type: 'log', text: '❌ Error: This workflow requires input', color: 'red' })}\n\n`);
     res.write(`data: ${JSON.stringify({ type: 'done', code: 1, status: 'error', message: 'Missing required input' })}\n\n`);
     res.end();
