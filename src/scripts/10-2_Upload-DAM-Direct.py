@@ -119,36 +119,137 @@ KEYWORD_TO_CATEGORY_ID = {
 }
 
 
-def get_exif_category(filepath):
+def get_image_keywords(filepath):
     """
-    Liest XMP:Subject Keywords aus der Bilddatei und gibt die passende
-    DAM-Kategorie-ID zurück. Fallback wenn kein Unterordner bekannt ist.
+    Liest ALLE Keywords aus der Bilddatei (XMP:Subject, IPTC:Keywords, EXIF).
+    Bevorzugt exiftool wenn verfügbar (zuverlässig), Fallback: XMP-Parsing.
+    Gibt Liste der eindeutigen Keywords zurück.
     """
+    keywords = []
+
+    # Strategy 1: exiftool (am zuverlässigsten - liest XMP, IPTC, EXIF)
+    try:
+        from _utils import find_exiftool
+        exiftool = find_exiftool()
+        if exiftool:
+            import subprocess as sp
+            # -s -s -s: extra short output (only values), -sep: separator
+            result = sp.run(
+                [exiftool, '-s', '-s', '-s', '-sep', '||',
+                 '-XMP:Subject', '-IPTC:Keywords', '-Keywords',
+                 filepath],
+                capture_output=True, text=True, timeout=10
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                # exiftool may print one line per tag, separated by ||
+                for line in result.stdout.strip().split('\n'):
+                    for kw in line.split('||'):
+                        kw = kw.strip()
+                        if kw and kw not in keywords:
+                            keywords.append(kw)
+                if keywords:
+                    return keywords
+    except Exception as e:
+        logger.debug(f"exiftool keyword-read fehlgeschlagen ({filepath}): {e}")
+
+    # Strategy 2: XMP via Raw-Read (Fallback)
     try:
         with open(filepath, 'rb') as f:
             raw = f.read()
-        # XMP-Paket suchen (im JPEG-Body enthalten)
         start = raw.find(b'<rdf:RDF')
         end   = raw.find(b'</rdf:RDF>')
         if start == -1 or end == -1:
-            return None
+            return keywords
         xmp = raw[start:end + len('</rdf:RDF>')].decode('utf-8', errors='ignore')
         # Keywords aus <rdf:li>...</rdf:li> extrahieren
-        keywords = re.findall(r'<rdf:li[^>]*>([^<]+)</rdf:li>', xmp)
-        for kw in keywords:
-            cat_id = KEYWORD_TO_CATEGORY_ID.get(kw.strip())
-            if cat_id:
-                logger.info(f"  EXIF-Keyword '{kw}' → Kategorie {cat_id}")
-                return cat_id
-    except Exception:
-        pass
+        for kw in re.findall(r'<rdf:li[^>]*>([^<]+)</rdf:li>', xmp):
+            kw = kw.strip()
+            if kw and kw not in keywords:
+                keywords.append(kw)
+    except Exception as e:
+        logger.debug(f"XMP keyword-read fehlgeschlagen ({filepath}): {e}")
+
+    return keywords
+
+
+def get_exif_category(filepath):
+    """
+    Gibt DAM-Kategorie-ID basierend auf Image-Keywords zurück.
+    Nutzt get_image_keywords() für robustes Lesen.
+    """
+    keywords = get_image_keywords(filepath)
+    for kw in keywords:
+        cat_id = KEYWORD_TO_CATEGORY_ID.get(kw)
+        if cat_id:
+            logger.info(f"  EXIF-Keyword '{kw}' → Kategorie {cat_id}")
+            return cat_id
     return None
+
+
+def update_asset_keywords(unique_id, keywords, filename):
+    """
+    Setzt Tags/Keywords auf das DAM-Asset.
+    Versucht 3 Strategien (Cliplister-API ist nicht eindeutig dokumentiert):
+      1. Inline 'tags' Array im update Endpoint
+      2. Inline 'keywords' Array im update Endpoint
+      3. Separater /asset/tag/add Call pro Keyword
+    """
+    if not keywords:
+        return False
+
+    # Strategy 1: tags inline im update
+    try:
+        update_url = f"{DAM_API_BASE}/asset/update?unique_id={unique_id}"
+        resp = requests.put(
+            update_url,
+            headers=get_dam_headers(),
+            json={"tags": keywords},
+            timeout=30
+        )
+        if resp.status_code in [200, 204]:
+            logger.info(f"  Tags: {len(keywords)} gesetzt → {keywords} ✓")
+            return True
+    except Exception as e:
+        logger.debug(f"  tags inline fehlgeschlagen: {e}")
+
+    # Strategy 2: keywords inline im update
+    try:
+        resp = requests.put(
+            f"{DAM_API_BASE}/asset/update?unique_id={unique_id}",
+            headers=get_dam_headers(),
+            json={"keywords": keywords},
+            timeout=30
+        )
+        if resp.status_code in [200, 204]:
+            logger.info(f"  Keywords: {len(keywords)} gesetzt → {keywords} ✓")
+            return True
+    except Exception as e:
+        logger.debug(f"  keywords inline fehlgeschlagen: {e}")
+
+    # Strategy 3: pro Keyword einzelnen tag/add Call
+    success_count = 0
+    for kw in keywords:
+        try:
+            tag_url = f"{DAM_API_BASE}/asset/tag/add?unique_id={unique_id}&tag={requests.utils.quote(kw)}"
+            resp = requests.put(tag_url, headers=get_dam_headers(), json={}, timeout=15)
+            if resp.status_code in [200, 204]:
+                success_count += 1
+        except Exception as e:
+            logger.debug(f"  tag/add für '{kw}' fehlgeschlagen: {e}")
+
+    if success_count > 0:
+        logger.info(f"  Tags: {success_count}/{len(keywords)} via /tag/add gesetzt ✓")
+        return True
+
+    logger.warning(f"  ⚠ Keywords konnten nicht gesetzt werden für {filename}: {keywords}")
+    return False
 
 
 def update_asset_after_upload(unique_id, filename, subfolder=None, filepath=None):
     """
     Nach erfolgreichem Insert: requestKey (SKU), Titel und webEnabled setzen.
     Kategorie: 1. aus Unterordner-Name, 2. aus EXIF-Keywords (gesetzt von 02-1_filenaming.py)
+    Keywords (XMP:Subject) werden ebenfalls ans DAM übermittelt.
     """
     try:
         filename_no_ext = os.path.splitext(filename)[0]
@@ -157,9 +258,14 @@ def update_asset_after_upload(unique_id, filename, subfolder=None, filepath=None
         sku_match = re.match(r'^(\d{7,8})', filename_no_ext)
         sku = sku_match.group(1) if sku_match else None
 
+        # Keywords aus dem Bild lesen (Lightroom-Export, exiftool-Set)
+        image_keywords = []
+        if filepath and os.path.exists(filepath):
+            image_keywords = get_image_keywords(filepath)
+
         headers = get_dam_headers()
 
-        # Asset-Update: Titel, Produkt (requestKey) und webEnabled
+        # Asset-Update: Titel, Produkt (requestKey), webEnabled, Tags inline
         update_url = f"{DAM_API_BASE}/asset/update?unique_id={unique_id}"
         data = {
             "title": filename_no_ext,
@@ -169,17 +275,30 @@ def update_asset_after_upload(unique_id, filename, subfolder=None, filepath=None
             data["products"] = [
                 {"requestKey": sku, "title": filename_no_ext, "keyType": 100}
             ]
+        # Tags/Keywords inline mitschicken (Strategy 1)
+        if image_keywords:
+            data["tags"] = image_keywords
 
         resp = requests.put(update_url, headers=headers, json=data, timeout=30)
         if resp.status_code in [200, 204]:
-            logger.info(f"  Metadaten: {filename_no_ext} | SKU={sku} | webEnabled=True ✓")
+            kw_log = f" | {len(image_keywords)} Keywords" if image_keywords else ""
+            logger.info(f"  Metadaten: {filename_no_ext} | SKU={sku} | webEnabled=True{kw_log} ✓")
         else:
             logger.warning(f"  Metadaten-Update fehlgeschlagen {filename}: HTTP {resp.status_code}")
+            # Fallback: Tags separat versuchen wenn Update fehlschlug
+            if image_keywords:
+                update_asset_keywords(unique_id, image_keywords, filename)
 
         # Kategorie bestimmen: 1. Unterordner, 2. EXIF-Keywords
         category_id = SUBFOLDER_TO_CATEGORY.get(subfolder) if subfolder else None
         if not category_id and filepath and os.path.exists(filepath):
-            category_id = get_exif_category(filepath)
+            # Use already-loaded keywords (no double-read)
+            for kw in image_keywords:
+                cat_id = KEYWORD_TO_CATEGORY_ID.get(kw)
+                if cat_id:
+                    logger.info(f"  EXIF-Keyword '{kw}' → Kategorie {cat_id}")
+                    category_id = cat_id
+                    break
 
         if category_id:
             # Input-LWDE-Kategorie entfernen
