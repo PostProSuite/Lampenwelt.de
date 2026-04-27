@@ -608,22 +608,34 @@ if __name__ == "__main__":
 
         logger.info(f"Ziel-Kategorie: Input LWDE (ID {INPUT_LWDE_CATEGORY_ID})")
 
-        # Pruefen ob Bilder im Upload-Ordner liegen
+        # Pruefen ob Bilder im Upload-Ordner liegen (REKURSIV - inkl. Unterordner!)
+        # Bilder können nach 02-1_filenaming.py in Unterordnern liegen (B20-Clipping, A10-Mood, etc.)
         if not os.path.exists(upload_folder):
             logger.error(f"Upload-Ordner existiert nicht: {upload_folder}")
             sys.exit(1)
 
-        image_files = [
-            f for f in os.listdir(upload_folder)
-            if not f.startswith('.') and f.lower().endswith(('.jpg', '.jpeg', '.png', '.tif', '.tiff'))
-        ]
+        image_files = []
+        IMG_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.gif', '.webp')
+        for root, dirs, filenames in os.walk(upload_folder):
+            for f in filenames:
+                if f.startswith('.'):
+                    continue
+                if f.lower().endswith(IMG_EXTENSIONS):
+                    image_files.append(os.path.join(root, f))
 
         if not image_files:
             logger.error("Keine Bilder im Upload-Ordner gefunden!")
             logger.error(f"Ordner: {upload_folder}")
+            logger.error("Tipp: Bilder müssen in 03-Upload (oder Unterordnern wie B20-Clipping) liegen")
             sys.exit(1)
 
-        logger.info(f"{len(image_files)} Bilder im Upload-Ordner gefunden")
+        # Zeige Zusammenfassung: wie viele Bilder, in welchen Ordnern
+        folder_counts = {}
+        for fp in image_files:
+            folder = os.path.basename(os.path.dirname(fp))
+            folder_counts[folder] = folder_counts.get(folder, 0) + 1
+        folder_summary = ", ".join(f"{c} in {f}" for f, c in folder_counts.items())
+        logger.info(f"{len(image_files)} Bilder gefunden ({folder_summary})")
 
         # Upload
         logger.info("Bilder ins DAM hochladen...")
