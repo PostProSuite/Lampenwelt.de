@@ -129,6 +129,7 @@ def get_image_keywords(filepath):
     fname = os.path.basename(filepath)
 
     # Strategy 1: exiftool (am zuverlässigsten - liest XMP, IPTC, EXIF)
+    # Liest ALLE möglichen Keyword-Felder (Lightroom nutzt verschiedene)
     exiftool_used = False
     try:
         from _utils import find_exiftool
@@ -136,9 +137,16 @@ def get_image_keywords(filepath):
         if exiftool:
             exiftool_used = True
             import subprocess as sp
-            # -j: JSON output (cleaner parsing)
+            # -j: JSON output, -G: group names (XMP:, IPTC:, etc)
+            # Liest alle Keyword-Varianten die Lightroom oder andere Tools setzen
             result = sp.run(
-                [exiftool, '-j', '-XMP:Subject', '-IPTC:Keywords', '-Keywords', filepath],
+                [exiftool, '-j',
+                 '-XMP:Subject',           # Standard XMP keywords (Lightroom default)
+                 '-IPTC:Keywords',         # IPTC-IIM keywords
+                 '-Keywords',              # Generic keywords
+                 '-XMP-lr:HierarchicalSubject',  # Lightroom hierarchical
+                 '-XMP-dc:Subject',        # Dublin Core (alternative XMP)
+                 filepath],
                 capture_output=True, text=True, timeout=10
             )
             if result.returncode == 0 and result.stdout.strip():
@@ -146,21 +154,31 @@ def get_image_keywords(filepath):
                     data = json.loads(result.stdout)
                     if isinstance(data, list) and data:
                         meta = data[0]
-                        # XMP:Subject - either string or list
-                        for field in ('Subject', 'Keywords'):
+                        # Alle möglichen Felder durchgehen
+                        for field in ('Subject', 'Keywords', 'HierarchicalSubject',
+                                      'XMP-lr:HierarchicalSubject', 'XMP-dc:Subject'):
                             val = meta.get(field)
-                            if val:
-                                if isinstance(val, list):
-                                    for kw in val:
-                                        kw_str = str(kw).strip()
-                                        if kw_str and kw_str not in keywords:
-                                            keywords.append(kw_str)
-                                else:
-                                    # String form: comma- or semicolon-separated
-                                    for kw in re.split(r'[,;]', str(val)):
-                                        kw = kw.strip()
-                                        if kw and kw not in keywords:
-                                            keywords.append(kw)
+                            if not val:
+                                continue
+                            if isinstance(val, list):
+                                for kw in val:
+                                    kw_str = str(kw).strip()
+                                    # HierarchicalSubject hat Format "Parent|Child"
+                                    if '|' in kw_str:
+                                        kw_str = kw_str.split('|')[-1]
+                                    if kw_str and kw_str not in keywords:
+                                        keywords.append(kw_str)
+                            else:
+                                # String form: comma- or semicolon-separated
+                                for kw in re.split(r'[,;]', str(val)):
+                                    kw = kw.strip()
+                                    if '|' in kw:
+                                        kw = kw.split('|')[-1]
+                                    if kw and kw not in keywords:
+                                        keywords.append(kw)
+                        # Diagnose: zeige rohe Metadaten wenn nichts gefunden
+                        if not keywords:
+                            logger.debug(f"  exiftool fand keine Keywords. Raw meta: {meta}")
                 except json.JSONDecodeError as e:
                     logger.debug(f"  exiftool JSON parse error für {fname}: {e}")
             else:
@@ -447,52 +465,101 @@ def upload_to_sftp(local_path, sftp_filename):
 # BILDER INS DAM HOCHLADEN (via SFTP-URL)
 # ============================================================
 
-def upload_single_image(filepath, category_id, subfolder=None):
-    """Upload image to SFTP, then register with DAM via source-URL.
-    Afterwards: set requestKey (SKU), webEnabled=True and correct category."""
+def upload_single_image(filepath, default_category_id, subfolder=None):
+    """
+    Upload image to SFTP, then register with DAM.
+    ALLE Metadaten im EINEN Insert-Call statt separate Update-Calls
+    (das alte Skript hat das auch so gemacht, daher hat es funktioniert).
+    """
     filename = os.path.basename(filepath)
+    filename_no_ext = os.path.splitext(filename)[0]
     try:
         # Step 0: Resize image to max 1800x1800
         resize_image_to_1800(filepath)
 
-        # Step 1: Upload to SFTP
+        # Step 1: Read keywords aus Bild (BEVOR Resize könnte sie zerstören - aber Resize behält EXIF)
+        image_keywords = get_image_keywords(filepath)
+
+        # Step 2: SKU aus Filename
+        sku_match = re.match(r'^(\d{7,8})', filename_no_ext)
+        sku = sku_match.group(1) if sku_match else None
+
+        # Step 3: Korrekte Kategorie bestimmen (Subfolder > Keywords > Input LWDE Fallback)
+        category_id = SUBFOLDER_TO_CATEGORY.get(subfolder) if subfolder else None
+        if not category_id and image_keywords:
+            for kw in image_keywords:
+                cat_id = KEYWORD_TO_CATEGORY_ID.get(kw)
+                if cat_id:
+                    logger.info(f"  EXIF-Keyword '{kw}' → Kategorie {cat_id}")
+                    category_id = cat_id
+                    break
+        if not category_id:
+            category_id = default_category_id  # Input LWDE als Fallback
+
+        # Step 4: Upload to SFTP
         if not upload_to_sftp(filepath, filename):
             logger.warning(f"  SFTP-Upload fehlgeschlagen: {filename}")
             return False
 
-        # Step 2: Construct HTTPS URL for DAM API
+        # Step 5: Construct HTTPS URL for DAM API
         sftp_url = f"https://clup01.cliplister.com/files/{config['SFTP_USERNAME']}{config['SFTP_REMOTE_DIR']}/{filename}".replace('\\', '/')
 
-        # Step 3: Register with DAM
+        # Step 6: Register with DAM - ALLE Metadaten in EINEM Insert-Call
+        # (Wie das alte Skript! Update danach hat HTTP 500 verursacht)
         headers = get_dam_headers()
         payload = {
             "fileName": filename,
             "source": sftp_url,
+            "title": filename_no_ext,
             "categories": [{"id": category_id}],
+            "webEnabled": True,
         }
+        if sku:
+            payload["products"] = [
+                {"requestKey": sku, "title": filename_no_ext, "keyType": 100}
+            ]
+        if image_keywords:
+            payload["tags"] = image_keywords
 
-        response = requests.put(
-            DAM_ASSET_INSERT,
-            headers=headers,
-            json=payload,
-            timeout=30
-        )
+        response = requests.put(DAM_ASSET_INSERT, headers=headers, json=payload, timeout=30)
 
+        # Token-Refresh on 401
         if response.status_code == 401:
             logger.warning("Token abgelaufen, erneuere...")
             invalidate_dam_token()
             headers = get_dam_headers()
             response = requests.put(DAM_ASSET_INSERT, headers=headers, json=payload, timeout=30)
 
+        # Insert mit allem klappt? Perfekt, fertig.
         if response.status_code in [200, 201]:
             result = response.json() if response.text else {}
             unique_id = result.get('uniqueId', '') or result.get('unique_id', '')
-            logger.info(f"  Upload OK: {filename}" + (f" (ID: {unique_id})" if unique_id else ""))
+            kw_log = f" | {len(image_keywords)} Keywords" if image_keywords else ""
+            logger.info(f"  Upload OK: {filename} | Kategorie {category_id}{kw_log} ✓")
 
-            # Step 4: Set requestKey, title, webEnabled and correct category
-            if unique_id:
-                update_asset_after_upload(unique_id, filename, subfolder, filepath)
+            # Verify keywords falls API sie still ignoriert hat
+            if image_keywords and unique_id:
+                if not _verify_keywords_saved(unique_id, image_keywords):
+                    logger.info(f"  ⚠ Keywords beim Insert nicht gespeichert - versuche separat...")
+                    update_asset_keywords(unique_id, image_keywords, filename)
+            return True
 
+        # Fallback bei Fehler: Minimal-Insert (wie altes Skript)
+        logger.warning(f"  Insert mit Metadaten fehlgeschlagen ({response.status_code}) - versuche Fallback...")
+        minimal_payload = {
+            "fileName": filename,
+            "source": sftp_url,
+            "categories": [{"id": category_id}],
+        }
+        response = requests.put(DAM_ASSET_INSERT, headers=headers, json=minimal_payload, timeout=30)
+
+        if response.status_code in [200, 201]:
+            result = response.json() if response.text else {}
+            unique_id = result.get('uniqueId', '') or result.get('unique_id', '')
+            logger.info(f"  Upload OK [Fallback]: {filename} | Kategorie {category_id}")
+            # Versuche Tags separat zu setzen
+            if image_keywords and unique_id:
+                update_asset_keywords(unique_id, image_keywords, filename)
             return True
         else:
             logger.warning(f"  FEHLER: {filename}: HTTP {response.status_code} - {response.text[:200]}")
