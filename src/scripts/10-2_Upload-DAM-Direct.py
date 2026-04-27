@@ -122,52 +122,82 @@ KEYWORD_TO_CATEGORY_ID = {
 def get_image_keywords(filepath):
     """
     Liest ALLE Keywords aus der Bilddatei (XMP:Subject, IPTC:Keywords, EXIF).
-    Bevorzugt exiftool wenn verfügbar (zuverlässig), Fallback: XMP-Parsing.
+    Mit ausführlichem Logging - damit wir genau sehen was passiert.
     Gibt Liste der eindeutigen Keywords zurück.
     """
     keywords = []
+    fname = os.path.basename(filepath)
 
     # Strategy 1: exiftool (am zuverlässigsten - liest XMP, IPTC, EXIF)
+    exiftool_used = False
     try:
         from _utils import find_exiftool
         exiftool = find_exiftool()
         if exiftool:
+            exiftool_used = True
             import subprocess as sp
-            # -s -s -s: extra short output (only values), -sep: separator
+            # -j: JSON output (cleaner parsing)
             result = sp.run(
-                [exiftool, '-s', '-s', '-s', '-sep', '||',
-                 '-XMP:Subject', '-IPTC:Keywords', '-Keywords',
-                 filepath],
+                [exiftool, '-j', '-XMP:Subject', '-IPTC:Keywords', '-Keywords', filepath],
                 capture_output=True, text=True, timeout=10
             )
             if result.returncode == 0 and result.stdout.strip():
-                # exiftool may print one line per tag, separated by ||
-                for line in result.stdout.strip().split('\n'):
-                    for kw in line.split('||'):
-                        kw = kw.strip()
-                        if kw and kw not in keywords:
-                            keywords.append(kw)
-                if keywords:
-                    return keywords
+                try:
+                    data = json.loads(result.stdout)
+                    if isinstance(data, list) and data:
+                        meta = data[0]
+                        # XMP:Subject - either string or list
+                        for field in ('Subject', 'Keywords'):
+                            val = meta.get(field)
+                            if val:
+                                if isinstance(val, list):
+                                    for kw in val:
+                                        kw_str = str(kw).strip()
+                                        if kw_str and kw_str not in keywords:
+                                            keywords.append(kw_str)
+                                else:
+                                    # String form: comma- or semicolon-separated
+                                    for kw in re.split(r'[,;]', str(val)):
+                                        kw = kw.strip()
+                                        if kw and kw not in keywords:
+                                            keywords.append(kw)
+                except json.JSONDecodeError as e:
+                    logger.debug(f"  exiftool JSON parse error für {fname}: {e}")
+            else:
+                logger.debug(f"  exiftool returncode={result.returncode} stderr={result.stderr[:100]}")
     except Exception as e:
-        logger.debug(f"exiftool keyword-read fehlgeschlagen ({filepath}): {e}")
+        logger.debug(f"  exiftool keyword-read fehlgeschlagen ({fname}): {e}")
 
-    # Strategy 2: XMP via Raw-Read (Fallback)
+    # Strategy 2: XMP via Raw-Read (auch wenn exiftool was gefunden hat - findet evtl noch mehr)
     try:
         with open(filepath, 'rb') as f:
             raw = f.read()
+        # Suche das XMP-Paket
         start = raw.find(b'<rdf:RDF')
         end   = raw.find(b'</rdf:RDF>')
-        if start == -1 or end == -1:
-            return keywords
-        xmp = raw[start:end + len('</rdf:RDF>')].decode('utf-8', errors='ignore')
-        # Keywords aus <rdf:li>...</rdf:li> extrahieren
-        for kw in re.findall(r'<rdf:li[^>]*>([^<]+)</rdf:li>', xmp):
-            kw = kw.strip()
-            if kw and kw not in keywords:
-                keywords.append(kw)
+        if start != -1 and end != -1:
+            xmp = raw[start:end + len('</rdf:RDF>')].decode('utf-8', errors='ignore')
+            # Suche speziell nach dc:subject (das ist wo Lightroom Keywords ablegt)
+            subject_match = re.search(
+                r'<dc:subject>(.*?)</dc:subject>',
+                xmp, re.DOTALL
+            )
+            if subject_match:
+                subject_block = subject_match.group(1)
+                for kw in re.findall(r'<rdf:li[^>]*>([^<]+)</rdf:li>', subject_block):
+                    kw = kw.strip()
+                    if kw and kw not in keywords:
+                        keywords.append(kw)
     except Exception as e:
-        logger.debug(f"XMP keyword-read fehlgeschlagen ({filepath}): {e}")
+        logger.debug(f"  XMP keyword-read fehlgeschlagen ({fname}): {e}")
+
+    # Diagnose-Log: wir wollen wissen was passiert ist
+    if keywords:
+        logger.info(f"  📌 Keywords aus Bild gelesen ({fname}): {keywords}" +
+                    (f" [via exiftool]" if exiftool_used else " [via XMP-Raw]"))
+    else:
+        logger.info(f"  ⚪ KEINE Keywords im Bild gefunden ({fname})" +
+                    (f" — exiftool getestet" if exiftool_used else " — KEIN exiftool!"))
 
     return keywords
 
@@ -189,67 +219,107 @@ def get_exif_category(filepath):
 def update_asset_keywords(unique_id, keywords, filename):
     """
     Setzt Tags/Keywords auf das DAM-Asset.
-    Versucht 3 Strategien (Cliplister-API ist nicht eindeutig dokumentiert):
-      1. Inline 'tags' Array im update Endpoint
-      2. Inline 'keywords' Array im update Endpoint
-      3. Separater /asset/tag/add Call pro Keyword
+    Versucht MEHRERE Strategien parallel - mit ausführlichem Logging
+    damit wir genau sehen welche Cliplister-Variante funktioniert.
     """
     if not keywords:
         return False
 
-    # Strategy 1: tags inline im update
-    try:
-        update_url = f"{DAM_API_BASE}/asset/update?unique_id={unique_id}"
-        resp = requests.put(
-            update_url,
-            headers=get_dam_headers(),
-            json={"tags": keywords},
-            timeout=30
-        )
-        if resp.status_code in [200, 204]:
-            logger.info(f"  Tags: {len(keywords)} gesetzt → {keywords} ✓")
-            return True
-    except Exception as e:
-        logger.debug(f"  tags inline fehlgeschlagen: {e}")
+    base = f"{DAM_API_BASE}/asset/update?unique_id={unique_id}"
 
-    # Strategy 2: keywords inline im update
-    try:
-        resp = requests.put(
-            f"{DAM_API_BASE}/asset/update?unique_id={unique_id}",
-            headers=get_dam_headers(),
-            json={"keywords": keywords},
-            timeout=30
-        )
-        if resp.status_code in [200, 204]:
-            logger.info(f"  Keywords: {len(keywords)} gesetzt → {keywords} ✓")
-            return True
-    except Exception as e:
-        logger.debug(f"  keywords inline fehlgeschlagen: {e}")
+    # Verschiedene Format-Varianten die Cliplister haben könnte
+    strategies = [
+        # Format A: tags als Array von Strings
+        ('tags-array',     {"tags": keywords}),
+        # Format B: keywords als Array von Strings
+        ('keywords-array', {"keywords": keywords}),
+        # Format C: tags als comma-separated string
+        ('tags-csv',       {"tags": ", ".join(keywords)}),
+        # Format D: keywords als comma-separated string
+        ('keywords-csv',   {"keywords": ", ".join(keywords)}),
+        # Format E: tags als Array von Objekten {name: ...}
+        ('tags-objects',   {"tags": [{"name": k} for k in keywords]}),
+        # Format F: meta.keywords (verschachtelt)
+        ('meta-keywords',  {"meta": {"keywords": keywords}}),
+    ]
 
-    # Strategy 3: pro Keyword einzelnen tag/add Call
+    for label, payload in strategies:
+        try:
+            resp = requests.put(base, headers=get_dam_headers(), json=payload, timeout=30)
+            body = resp.text[:200] if resp.text else '(empty)'
+            logger.info(f"  🏷️  Tag-Strategy [{label}] → HTTP {resp.status_code} {body}")
+            if resp.status_code in [200, 204]:
+                # Verify it actually saved by GET-ing the asset
+                if _verify_keywords_saved(unique_id, keywords):
+                    logger.info(f"  ✅ Keywords ({len(keywords)}) erfolgreich gespeichert via [{label}]")
+                    return True
+                else:
+                    logger.info(f"  ⚠ HTTP {resp.status_code} aber Keywords nicht gefunden bei GET — versuche nächste Strategy")
+        except Exception as e:
+            logger.debug(f"  Tag-Strategy [{label}] Exception: {e}")
+
+    # Strategy G: einzelner tag/add Endpoint pro Keyword
     success_count = 0
     for kw in keywords:
-        try:
-            tag_url = f"{DAM_API_BASE}/asset/tag/add?unique_id={unique_id}&tag={requests.utils.quote(kw)}"
-            resp = requests.put(tag_url, headers=get_dam_headers(), json={}, timeout=15)
-            if resp.status_code in [200, 204]:
-                success_count += 1
-        except Exception as e:
-            logger.debug(f"  tag/add für '{kw}' fehlgeschlagen: {e}")
+        for endpoint_template in [
+            f"{DAM_API_BASE}/asset/tag/add?unique_id={unique_id}&tag={requests.utils.quote(kw)}",
+            f"{DAM_API_BASE}/asset/keyword/add?unique_id={unique_id}&keyword={requests.utils.quote(kw)}",
+        ]:
+            try:
+                resp = requests.put(endpoint_template, headers=get_dam_headers(), json={}, timeout=15)
+                if resp.status_code in [200, 204]:
+                    success_count += 1
+                    break
+                else:
+                    logger.debug(f"  /tag/add [{kw}] → HTTP {resp.status_code}")
+            except Exception as e:
+                logger.debug(f"  /tag/add [{kw}] Exception: {e}")
 
     if success_count > 0:
-        logger.info(f"  Tags: {success_count}/{len(keywords)} via /tag/add gesetzt ✓")
+        logger.info(f"  ✅ Tags: {success_count}/{len(keywords)} via einzelne tag/add Calls gesetzt")
         return True
 
-    logger.warning(f"  ⚠ Keywords konnten nicht gesetzt werden für {filename}: {keywords}")
+    logger.warning(f"  ⚠ ALLE Strategien für Keyword-Übermittlung fehlgeschlagen ({filename})")
+    logger.warning(f"     Keywords waren: {keywords}")
     return False
+
+
+def _verify_keywords_saved(unique_id, expected_keywords):
+    """GET das Asset und prüfe ob Keywords/Tags wirklich gespeichert sind."""
+    try:
+        url = f"{DAM_API_BASE}/asset/list?unique_id={unique_id}&limit=1"
+        resp = requests.get(url, headers=get_dam_headers(), timeout=15)
+        if resp.status_code != 200:
+            return False
+        data = resp.json()
+        # Asset kann an verschiedenen Stellen sein
+        assets = data.get('assets') if isinstance(data, dict) else (data if isinstance(data, list) else [])
+        if not assets:
+            return False
+        asset = assets[0]
+        # Suche in mehreren möglichen Feldern
+        for field in ('tags', 'keywords', 'subject'):
+            val = asset.get(field)
+            if val:
+                # Vergleiche - mindestens eines unserer Keywords muss da sein
+                str_val = json.dumps(val).lower() if not isinstance(val, str) else val.lower()
+                if any(kw.lower() in str_val for kw in expected_keywords):
+                    return True
+        return False
+    except Exception as e:
+        logger.debug(f"  Verify-GET fehlgeschlagen: {e}")
+        return False
 
 
 def update_asset_after_upload(unique_id, filename, subfolder=None, filepath=None):
     """
-    Nach erfolgreichem Insert: requestKey (SKU), Titel und webEnabled setzen.
-    Kategorie: 1. aus Unterordner-Name, 2. aus EXIF-Keywords (gesetzt von 02-1_filenaming.py)
-    Keywords (XMP:Subject) werden ebenfalls ans DAM übermittelt.
+    Nach erfolgreichem Insert in DAM:
+      1. Basis-Update (Titel, SKU, webEnabled) — OHNE Tags (verhindert "Workflow-Error")
+      2. Kategorie zuweisen
+      3. Keywords/Tags separat setzen (eigene API-Calls mit Format-Detection)
+
+    Wichtig: Tags müssen SEPARAT gesetzt werden! Wenn Tags inline mit webEnabled
+    kommen, triggert der DAM-Workflow einen "Workflow-Error".
     """
     try:
         filename_no_ext = os.path.splitext(filename)[0]
@@ -258,14 +328,13 @@ def update_asset_after_upload(unique_id, filename, subfolder=None, filepath=None
         sku_match = re.match(r'^(\d{7,8})', filename_no_ext)
         sku = sku_match.group(1) if sku_match else None
 
-        # Keywords aus dem Bild lesen (Lightroom-Export, exiftool-Set)
+        # ───── PHASE 1: Keywords aus dem Bild lesen ─────
         image_keywords = []
         if filepath and os.path.exists(filepath):
             image_keywords = get_image_keywords(filepath)
 
+        # ───── PHASE 2: Basis-Update (KEINE Tags!) ─────
         headers = get_dam_headers()
-
-        # Asset-Update: Titel, Produkt (requestKey), webEnabled, Tags inline
         update_url = f"{DAM_API_BASE}/asset/update?unique_id={unique_id}"
         data = {
             "title": filename_no_ext,
@@ -275,24 +344,16 @@ def update_asset_after_upload(unique_id, filename, subfolder=None, filepath=None
             data["products"] = [
                 {"requestKey": sku, "title": filename_no_ext, "keyType": 100}
             ]
-        # Tags/Keywords inline mitschicken (Strategy 1)
-        if image_keywords:
-            data["tags"] = image_keywords
 
         resp = requests.put(update_url, headers=headers, json=data, timeout=30)
         if resp.status_code in [200, 204]:
-            kw_log = f" | {len(image_keywords)} Keywords" if image_keywords else ""
-            logger.info(f"  Metadaten: {filename_no_ext} | SKU={sku} | webEnabled=True{kw_log} ✓")
+            logger.info(f"  Metadaten: {filename_no_ext} | SKU={sku} | webEnabled=True ✓")
         else:
-            logger.warning(f"  Metadaten-Update fehlgeschlagen {filename}: HTTP {resp.status_code}")
-            # Fallback: Tags separat versuchen wenn Update fehlschlug
-            if image_keywords:
-                update_asset_keywords(unique_id, image_keywords, filename)
+            logger.warning(f"  Metadaten-Update fehlgeschlagen {filename}: HTTP {resp.status_code} - {resp.text[:200]}")
 
-        # Kategorie bestimmen: 1. Unterordner, 2. EXIF-Keywords
+        # ───── PHASE 3: Kategorie zuweisen ─────
         category_id = SUBFOLDER_TO_CATEGORY.get(subfolder) if subfolder else None
-        if not category_id and filepath and os.path.exists(filepath):
-            # Use already-loaded keywords (no double-read)
+        if not category_id and image_keywords:
             for kw in image_keywords:
                 cat_id = KEYWORD_TO_CATEGORY_ID.get(kw)
                 if cat_id:
@@ -316,8 +377,14 @@ def update_asset_after_upload(unique_id, filename, subfolder=None, filepath=None
         else:
             logger.warning(f"  Keine Kategorie erkannt für {filename} — bleibt in Input LWDE")
 
+        # ───── PHASE 4: Keywords/Tags separat setzen ─────
+        if image_keywords:
+            update_asset_keywords(unique_id, image_keywords, filename)
+
     except Exception as e:
         logger.error(f"  Fehler beim Asset-Update nach Upload {filename}: {e}")
+        import traceback
+        logger.debug(traceback.format_exc())
 
 
 # ============================================================
