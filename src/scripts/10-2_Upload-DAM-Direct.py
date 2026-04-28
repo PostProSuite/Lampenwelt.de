@@ -53,8 +53,12 @@ DAM_API_BASE = "https://api-rs.mycliplister.com/v2.2/apis"
 DAM_ASSET_INSERT = f"{DAM_API_BASE}/asset/insert"
 DAM_ASSET_CATEGORY_ADD = f"{DAM_API_BASE}/asset/category/add"
 
-# Ziel-Kategorie: "Input LWDE" im DAM (Fallback wenn kein Unterordner erkannt)
-# https://lampenwelt.demoup-cliplister.com/channel/categoryId=660250
+# Ziel-Kategorie: gleiche wie altes funktionierendes Skript (10-1_Upload-FTP-Folder.py)
+# Diese Kategorie triggert KEINEN problematischen DAM-Workflow,
+# und das DAM extrahiert automatisch Keywords aus dem Bild beim Insert.
+DEFAULT_CATEGORY_ID = 591672
+
+# Alte Konstante (Input LWDE) - triggert Worflow-Error im DAM, deshalb nicht mehr Default
 INPUT_LWDE_CATEGORY_ID = 660250
 
 # Subfolder-Name → DAM-Kategorie-ID (identisch mit 02-1_filenaming.py)
@@ -468,25 +472,27 @@ def upload_to_sftp(local_path, sftp_filename):
 def upload_single_image(filepath, default_category_id, subfolder=None):
     """
     Upload image to SFTP, then register with DAM.
-    ALLE Metadaten im EINEN Insert-Call statt separate Update-Calls
-    (das alte Skript hat das auch so gemacht, daher hat es funktioniert).
+
+    GENAU wie altes 10-1_Upload-FTP-Folder.py:
+    - MINIMAL-Insert: nur source, fileName, categories
+    - KEIN title, KEIN webEnabled, KEIN products, KEIN tags
+    - Das DAM extrahiert Keywords automatisch aus dem Bild
+    - webEnabled triggert sonst "Worflow-Error" Kategorie im DAM
+
+    Die korrekte Kategorie kommt aus dem Subfolder (falls erkannt),
+    ansonsten DEFAULT_CATEGORY_ID = 591672 (wie altes Skript).
     """
     filename = os.path.basename(filepath)
-    filename_no_ext = os.path.splitext(filename)[0]
     try:
-        # Step 0: Resize image to max 1800x1800
+        # Step 0: Resize image to max 1800x1800 (Resize behält EXIF/XMP/IPTC)
         resize_image_to_1800(filepath)
 
-        # Step 1: Read keywords aus Bild (BEVOR Resize könnte sie zerstören - aber Resize behält EXIF)
-        image_keywords = get_image_keywords(filepath)
-
-        # Step 2: SKU aus Filename
-        sku_match = re.match(r'^(\d{7,8})', filename_no_ext)
-        sku = sku_match.group(1) if sku_match else None
-
-        # Step 3: Korrekte Kategorie bestimmen (Subfolder > Keywords > Input LWDE Fallback)
+        # Step 1: Korrekte Kategorie bestimmen
+        # Priority: Subfolder-Mapping > EXIF-Keywords > default
         category_id = SUBFOLDER_TO_CATEGORY.get(subfolder) if subfolder else None
-        if not category_id and image_keywords:
+        if not category_id:
+            # Aus Bild-Keywords lesen (für Auto-Kategorisierung)
+            image_keywords = get_image_keywords(filepath)
             for kw in image_keywords:
                 cat_id = KEYWORD_TO_CATEGORY_ID.get(kw)
                 if cat_id:
@@ -494,32 +500,24 @@ def upload_single_image(filepath, default_category_id, subfolder=None):
                     category_id = cat_id
                     break
         if not category_id:
-            category_id = default_category_id  # Input LWDE als Fallback
+            category_id = default_category_id
 
-        # Step 4: Upload to SFTP
+        # Step 2: Upload to SFTP
         if not upload_to_sftp(filepath, filename):
             logger.warning(f"  SFTP-Upload fehlgeschlagen: {filename}")
             return False
 
-        # Step 5: Construct HTTPS URL for DAM API
+        # Step 3: Construct HTTPS URL for DAM API
         sftp_url = f"https://clup01.cliplister.com/files/{config['SFTP_USERNAME']}{config['SFTP_REMOTE_DIR']}/{filename}".replace('\\', '/')
 
-        # Step 6: Register with DAM - ALLE Metadaten in EINEM Insert-Call
-        # (Wie das alte Skript! Update danach hat HTTP 500 verursacht)
+        # Step 4: MINIMAL Insert (wie altes funktionierendes Skript!)
+        # Das DAM extrahiert Keywords/Title automatisch aus dem Bild
         headers = get_dam_headers()
         payload = {
-            "fileName": filename,
             "source": sftp_url,
-            "title": filename_no_ext,
+            "fileName": filename,
             "categories": [{"id": category_id}],
-            "webEnabled": True,
         }
-        if sku:
-            payload["products"] = [
-                {"requestKey": sku, "title": filename_no_ext, "keyType": 100}
-            ]
-        if image_keywords:
-            payload["tags"] = image_keywords
 
         response = requests.put(DAM_ASSET_INSERT, headers=headers, json=payload, timeout=30)
 
@@ -530,36 +528,10 @@ def upload_single_image(filepath, default_category_id, subfolder=None):
             headers = get_dam_headers()
             response = requests.put(DAM_ASSET_INSERT, headers=headers, json=payload, timeout=30)
 
-        # Insert mit allem klappt? Perfekt, fertig.
         if response.status_code in [200, 201]:
             result = response.json() if response.text else {}
             unique_id = result.get('uniqueId', '') or result.get('unique_id', '')
-            kw_log = f" | {len(image_keywords)} Keywords" if image_keywords else ""
-            logger.info(f"  Upload OK: {filename} | Kategorie {category_id}{kw_log} ✓")
-
-            # Verify keywords falls API sie still ignoriert hat
-            if image_keywords and unique_id:
-                if not _verify_keywords_saved(unique_id, image_keywords):
-                    logger.info(f"  ⚠ Keywords beim Insert nicht gespeichert - versuche separat...")
-                    update_asset_keywords(unique_id, image_keywords, filename)
-            return True
-
-        # Fallback bei Fehler: Minimal-Insert (wie altes Skript)
-        logger.warning(f"  Insert mit Metadaten fehlgeschlagen ({response.status_code}) - versuche Fallback...")
-        minimal_payload = {
-            "fileName": filename,
-            "source": sftp_url,
-            "categories": [{"id": category_id}],
-        }
-        response = requests.put(DAM_ASSET_INSERT, headers=headers, json=minimal_payload, timeout=30)
-
-        if response.status_code in [200, 201]:
-            result = response.json() if response.text else {}
-            unique_id = result.get('uniqueId', '') or result.get('unique_id', '')
-            logger.info(f"  Upload OK [Fallback]: {filename} | Kategorie {category_id}")
-            # Versuche Tags separat zu setzen
-            if image_keywords and unique_id:
-                update_asset_keywords(unique_id, image_keywords, filename)
+            logger.info(f"  Upload OK: {filename} | Kategorie {category_id} ✓")
             return True
         else:
             logger.warning(f"  FEHLER: {filename}: HTTP {response.status_code} - {response.text[:200]}")
@@ -673,7 +645,7 @@ if __name__ == "__main__":
         if ticket_key:
             logger.info(f"Ticket: {ticket_key}")
 
-        logger.info(f"Ziel-Kategorie: Input LWDE (ID {INPUT_LWDE_CATEGORY_ID})")
+        logger.info(f"Default-Kategorie: ID {DEFAULT_CATEGORY_ID} (wie altes Skript - DAM extrahiert Keywords automatisch)")
 
         # Pruefen ob Bilder im Upload-Ordner liegen (REKURSIV - inkl. Unterordner!)
         # Bilder können nach 02-1_filenaming.py in Unterordnern liegen (B20-Clipping, A10-Mood, etc.)
@@ -706,7 +678,7 @@ if __name__ == "__main__":
 
         # Upload
         logger.info("Bilder ins DAM hochladen...")
-        uploaded = upload_all_images(INPUT_LWDE_CATEGORY_ID)
+        uploaded = upload_all_images(DEFAULT_CATEGORY_ID)
 
         if uploaded == 0:
             logger.error("Keine Bilder konnten hochgeladen werden!")
@@ -722,7 +694,7 @@ if __name__ == "__main__":
         else:
             failed = len(image_files) - uploaded
             logger.warning(f"⚠ TEILWEISE: {uploaded}/{len(image_files)} erfolgreich, {failed} fehlgeschlagen")
-        logger.info(f"Ziel-Kategorie: Input LWDE (ID {INPUT_LWDE_CATEGORY_ID})")
+        logger.info(f"Default-Kategorie: ID {DEFAULT_CATEGORY_ID} (wie altes Skript - DAM extrahiert Keywords automatisch)")
         if ticket_key:
             logger.info(f"Ticket: {ticket_key}")
         logger.info("=" * 70)

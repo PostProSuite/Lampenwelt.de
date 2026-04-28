@@ -1,6 +1,6 @@
 {
   "version": "1.2.35",
-  "generated": "2026-04-27T11:39:35.861Z",
+  "generated": "2026-04-28T10:18:49.831Z",
   "description": "Manifest for delta-update system - used by script-updater.js",
   "files": {
     "src/scripts/00-SKU-based-json-2.py": {
@@ -29,9 +29,9 @@
       "mtime": "2026-04-22T09:19:32.984Z"
     },
     "src/scripts/10-2_Upload-DAM-Direct.py": {
-      "sha256": "d3cacc50ac9ce6b5c4b4de421306540edb3d6075b4fa1000a5b96d420b7a63ae",
-      "size": 30116,
-      "mtime": "2026-04-27T11:20:33.746Z"
+      "sha256": "38b8be1e50d1be9fdbf77ad0e9dfb4781bee3f383117dbf5d1d4bf6ba19e99f9",
+      "size": 28730,
+      "mtime": "2026-04-28T10:17:12.578Z"
     },
     "src/scripts/11-1_webenabled-nein.py": {
       "sha256": "0b89f3bbdd558cc9698f26c1b0d5ebe0a3c4cee92fddbf7ebe0b5cb345dca63e",
