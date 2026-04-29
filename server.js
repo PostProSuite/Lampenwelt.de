@@ -7,7 +7,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const CustomUpdater = require('./lib/customUpdater');
-const { resolveScriptPath, getUserScriptsDir } = require('./script-updater');
+const { resolveScriptPath, getUserScriptsDir, checkScriptUpdatesAvailable, checkAndUpdateScripts } = require('./script-updater');
 const app = express();
 
 // In the packaged .app, Python scripts are unpacked outside the .asar archive
@@ -773,6 +773,71 @@ app.post('/api/cancel-update', (req, res) => {
   updateState.progress = {percent: 0, speed: 0, eta: null};
 
   res.json({cancelled: true});
+});
+
+// ════════════════════════════════════════════════════════════════
+// DELTA-UPDATES (Skripte/UI ohne DMG-Download)
+// ════════════════════════════════════════════════════════════════
+
+// GET /api/check-script-updates
+// Prüft welche Files sich gegenüber GitHub geändert haben (ohne Download)
+app.get('/api/check-script-updates', async (req, res) => {
+  try {
+    const result = await checkScriptUpdatesAvailable(__dirname);
+
+    if (result.error) {
+      return res.status(503).json({
+        available: false,
+        error: result.error
+      });
+    }
+
+    res.json({
+      available: result.changed.length > 0,
+      changedCount: result.changed.length,
+      totalFiles: result.total,
+      changedFiles: result.changed,
+      manifestVersion: result.manifestVersion,
+    });
+  } catch (err) {
+    console.error('check-script-updates Fehler:', err);
+    res.status(500).json({error: err.message});
+  }
+});
+
+// POST /api/apply-script-updates
+// Führt Delta-Update sofort aus (ohne App-Neustart)
+app.post('/api/apply-script-updates', async (req, res) => {
+  try {
+    console.log('🔄 Manuelles Delta-Update via Update-Button gestartet...');
+    const result = await checkAndUpdateScripts(__dirname);
+
+    res.json({
+      success: result.errors.length === 0,
+      updatedCount: result.updated.length,
+      updatedFiles: result.updated,
+      skipped: result.skipped,
+      errors: result.errors,
+      // UI-Files brauchen Reload, Python-Files nicht
+      uiUpdated: result.updated.some(f => f.startsWith('public/')),
+      pythonUpdated: result.updated.some(f => f.endsWith('.py') || f.endsWith('.mlmodel')),
+    });
+  } catch (err) {
+    console.error('apply-script-updates Fehler:', err);
+    res.status(500).json({error: err.message});
+  }
+});
+
+// POST /api/reload-window
+// Triggert Browser-Reload nach UI-Update (über main.js)
+app.post('/api/reload-window', (req, res) => {
+  try {
+    const flagPath = path.join(os.tmpdir(), 'postpro-reload-flag');
+    fs.writeFileSync(flagPath, JSON.stringify({timestamp: new Date().toISOString()}));
+    res.json({success: true});
+  } catch (err) {
+    res.status(500).json({error: err.message});
+  }
 });
 
 // Fallback für alle anderen Routes (SPA)

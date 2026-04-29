@@ -59,6 +59,31 @@ function startRestartFlagWatcher() {
   }, 500);
 }
 
+/**
+ * Watcher für reload-flag - lädt das BrowserWindow neu nach UI-Delta-Update
+ * (HTML/CSS-Änderungen werden so sofort sichtbar ohne App-Neustart).
+ */
+function startReloadFlagWatcher() {
+  const flagPath = path.join(os.tmpdir(), 'postpro-reload-flag');
+  let warned = false;
+  setInterval(() => {
+    try {
+      if (fs.existsSync(flagPath)) {
+        console.log('🔁 Reload-Flag erkannt - lade BrowserWindow neu');
+        try { fs.unlinkSync(flagPath); } catch (_) {}
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.reloadIgnoringCache();
+        }
+      }
+    } catch (err) {
+      if (!warned) {
+        console.warn('⚠️ Reload-Flag Watcher Fehler:', err.message);
+        warned = true;
+      }
+    }
+  }, 500);
+}
+
 let httpServer;
 
 let mainWindow;
@@ -252,6 +277,9 @@ app.on('ready', async () => {
 
   // Watcher für restart-flag (Update-Trigger vom Server)
   startRestartFlagWatcher();
+
+  // Watcher für reload-flag (UI-Delta-Update ohne App-Neustart)
+  startReloadFlagWatcher();
 
   // Check if app is in /Applications (needed for auto-updates on macOS)
   promptMoveToApplications();

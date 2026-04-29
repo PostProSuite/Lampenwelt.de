@@ -231,8 +231,51 @@ function resolvePublicPath(appDir, fileName) {
   return bundledPath;
 }
 
+/**
+ * NUR prüfen - kein Download. Zeigt was sich ändern würde.
+ * @param {string} appDir
+ * @returns {Promise<{changed: Array<{path,reason}>, total: number, manifestVersion: string}>}
+ */
+async function checkScriptUpdatesAvailable(appDir) {
+  const result = { changed: [], total: 0, manifestVersion: null, error: null };
+
+  try {
+    const remoteManifest = await fetchRemoteManifest();
+    if (!remoteManifest || !remoteManifest.files) {
+      result.error = 'Kein Remote-Manifest verfügbar';
+      return result;
+    }
+
+    result.manifestVersion = remoteManifest.version;
+    result.total = Object.keys(remoteManifest.files).length;
+
+    const userBase = getUserOverrideBase();
+    const bundledBase = getBundledBase(appDir);
+
+    for (const [relativePath, meta] of Object.entries(remoteManifest.files)) {
+      const userFile = path.join(userBase, relativePath);
+      const bundledFile = path.join(bundledBase, relativePath);
+      const currentFile = fs.existsSync(userFile) ? userFile : bundledFile;
+      const currentHash = fileHash(currentFile);
+
+      if (currentHash !== meta.sha256) {
+        result.changed.push({
+          path: relativePath,
+          reason: !currentHash ? 'fehlt' : 'geändert',
+          size: meta.size,
+        });
+      }
+    }
+  } catch (err) {
+    result.error = err.message;
+  }
+
+  return result;
+}
+
 module.exports = {
   checkAndUpdateScripts,
+  checkScriptUpdatesAvailable,
   resolveScriptPath,
   resolvePublicPath,
   getUserScriptsDir,
