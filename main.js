@@ -3,10 +3,61 @@ const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
+const os = require('os');
 const { execSync } = require('child_process');
 const expressApp = require('./server.js');
 const Installer = require('./installer.js');
 const { checkAndUpdateScripts } = require('./script-updater.js');
+
+/**
+ * Schreibt app-info.json mit Pfad-Info, damit customUpdater.js weiß
+ * wo die App liegt (statt fallback auf /Applications).
+ */
+function writeAppInfoFile() {
+  try {
+    const infoPath = path.join(os.tmpdir(), 'postpro-app-info.json');
+    const info = {
+      appPath: app.getAppPath(),
+      isPackaged: app.isPackaged,
+      pid: process.pid,
+      version: app.getVersion ? app.getVersion() : 'unknown',
+      writtenAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(infoPath, JSON.stringify(info, null, 2));
+    console.log(`📱 app-info.json geschrieben: ${infoPath}`);
+  } catch (err) {
+    console.warn('⚠️ Konnte app-info.json nicht schreiben:', err.message);
+  }
+}
+
+/**
+ * Watcher für restart-flag - wenn Server signalisiert dass App neu starten soll.
+ * Beim Detection: app.quit() - Helper-Skript übernimmt Replace + Restart.
+ */
+function startRestartFlagWatcher() {
+  const flagPath = path.join(os.tmpdir(), 'postpro-restart-flag');
+  let warned = false;
+  const watcherInterval = setInterval(() => {
+    try {
+      if (fs.existsSync(flagPath)) {
+        console.log('🔄 Restart-Flag erkannt - beende App damit Helper Update installieren kann');
+        try {
+          fs.unlinkSync(flagPath);
+        } catch (_) {}
+        clearInterval(watcherInterval);
+        // Kurz warten damit Server-Response noch raus geht, dann quit
+        setTimeout(() => {
+          app.quit();
+        }, 500);
+      }
+    } catch (err) {
+      if (!warned) {
+        console.warn('⚠️ Restart-Flag Watcher Fehler:', err.message);
+        warned = true;
+      }
+    }
+  }, 500);
+}
 
 let httpServer;
 
@@ -196,6 +247,12 @@ function checkPython3Available() {
 }
 
 app.on('ready', async () => {
+  // Schreibt Pfad-Info-Datei für customUpdater (Update-Button)
+  writeAppInfoFile();
+
+  // Watcher für restart-flag (Update-Trigger vom Server)
+  startRestartFlagWatcher();
+
   // Check if app is in /Applications (needed for auto-updates on macOS)
   promptMoveToApplications();
 

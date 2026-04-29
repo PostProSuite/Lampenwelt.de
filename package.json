@@ -1,6 +1,6 @@
 {
   "name": "PostProSuite",
-  "version": "1.2.36",
+  "version": "1.2.37",
   "description": "PostPro Suite - Professional Image Processing Workflow",
   "main": "main.js",
   "homepage": "./",
@@ -43,7 +43,8 @@
     ],
     "asarUnpack": [
       "src/**/*",
-      "requirements.txt"
+      "requirements.txt",
+      "lib/install-helper.sh"
     ],
     "mac": {
       "target": [

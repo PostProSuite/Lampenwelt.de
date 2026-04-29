@@ -1,6 +1,6 @@
 {
-  "version": "1.2.36",
-  "generated": "2026-04-29T05:40:24.513Z",
+  "version": "1.2.37",
+  "generated": "2026-04-29T05:57:01.875Z",
   "description": "Manifest for delta-update system - used by script-updater.js",
   "files": {
     "src/scripts/00-SKU-based-json-2.py": {
@@ -19,9 +19,9 @@
       "mtime": "2026-04-29T05:34:49.434Z"
     },
     "src/scripts/04-1_Jira-Final.py": {
-      "sha256": "09aeb56cd1c8c0b037aefbf10c0dfc97d89ac454da7e1bc65f4764a5432eb893",
-      "size": 27335,
-      "mtime": "2026-04-29T05:37:51.535Z"
+      "sha256": "42566fb22a4ba31b238fea1f9c2f1f1e80b72f9f3d679a0c4875a0ece80691d6",
+      "size": 27378,
+      "mtime": "2026-04-29T05:55:46.812Z"
     },
     "src/scripts/06-X-Artikel.py": {
       "sha256": "8ba9895d23993ed731bc138f6e1e9c18a741155ad85a3a0d42d0e7a9dbcc4c84",
@@ -64,9 +64,9 @@
       "mtime": "2026-04-23T20:53:03.041Z"
     },
     "public/dashboard.html": {
-      "sha256": "6c274775223a6fb839c0ccaba2dbb9896eed586fd5def7a16b99a162db2b705d",
-      "size": 92430,
-      "mtime": "2026-04-23T21:18:16.367Z"
+      "sha256": "833e89749e4713b6442a5c2f7f3c60d0704508463c82d32b868bd9027686ee3e",
+      "size": 94879,
+      "mtime": "2026-04-29T05:56:43.504Z"
     },
     "public/setup.html": {
       "sha256": "3ad491085b34beefe45949849e4f53824a9eb0b60129fef4a3b366b41e66bb97",

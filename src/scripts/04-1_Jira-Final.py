@@ -55,7 +55,9 @@ workspace          = paths['workspace']
 input_path         = paths['input_batchfiles']   # 01-Input RAW files
 webcheck_path      = paths['web_check']           # 02-Webcheck
 upload_path        = paths['upload']               # 03-Upload
-excel_exports_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "exports")
+# Excel-Exports IM WORKSPACE - so kann die App sie anzeigen + löschen
+excel_exports_path = os.path.join(workspace, 'Exports')
+os.makedirs(excel_exports_path, exist_ok=True)
 
 from _utils import find_exiftool
 EXIFTOOL = os.environ.get('EXIFTOOL_PATH') or find_exiftool() or '/opt/homebrew/bin/exiftool'

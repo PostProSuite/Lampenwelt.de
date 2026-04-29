@@ -139,29 +139,39 @@ app.post('/api/login', (req, res) => {
   res.json({ success: true, user: VALID_USER });
 });
 
+// Helper: zentraler Exports-Pfad - immer im Workspace
+function getExportsPath() {
+  const workspace = resolveWorkspace();
+  return path.join(workspace, 'Exports');
+}
+
 // Get Exports
 app.get('/api/get-exports', (req, res) => {
   try {
-    const exportsPath = path.join(resolveWorkspace(), '..', 'Excel-Exports');
+    const exportsPath = getExportsPath();
     if (!fs.existsSync(exportsPath)) {
-      return res.json({ exports: [] });
+      fs.mkdirSync(exportsPath, { recursive: true });
+      return res.json({ exports: [], path: exportsPath });
     }
 
     const files = fs.readdirSync(exportsPath)
-      .filter(f => f.endsWith('.xlsx') || f.endsWith('.xls'))
+      .filter(f => !f.startsWith('.'))
+      .filter(f => f.endsWith('.xlsx') || f.endsWith('.xls') || f.endsWith('.csv'))
       .map(f => {
         const fullPath = path.join(exportsPath, f);
         const stats = fs.statSync(fullPath);
         return {
           name: f,
-          size: (stats.size / 1024).toFixed(2) + ' KB',
-          date: new Date(stats.mtime).toLocaleString('de-CH'),
+          size: stats.size,
+          sizeKB: (stats.size / 1024).toFixed(1) + ' KB',
+          mtime: stats.mtime.getTime(),
+          date: new Date(stats.mtime).toLocaleString('de-DE'),
           path: `/api/download-export/${encodeURIComponent(f)}`
         };
       })
-      .sort((a, b) => b.date.localeCompare(a.date)); // Newest first
+      .sort((a, b) => b.mtime - a.mtime); // Newest first
 
-    res.json({ exports: files });
+    res.json({ exports: files, path: exportsPath });
   } catch (err) {
     console.error('Fehler beim Laden der Exporte:', err);
     res.status(500).json({ error: err.message });
@@ -172,15 +182,13 @@ app.get('/api/get-exports', (req, res) => {
 app.get('/api/download-export/:filename', (req, res) => {
   try {
     const filename = decodeURIComponent(req.params.filename);
-    // Prevent directory traversal
-    if (filename.includes('..') || filename.includes('/')) {
+    if (filename.includes('..') || filename.includes('/') || filename.startsWith('.')) {
       return res.status(400).json({ error: 'Invalid filename' });
     }
 
-    const exportsPath = path.join(resolveWorkspace(), '..', 'Excel-Exports');
+    const exportsPath = getExportsPath();
     const filePath = path.join(exportsPath, filename);
 
-    // Verify file exists and is in exports dir
     if (!filePath.startsWith(exportsPath) || !fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'File not found' });
     }
@@ -188,6 +196,35 @@ app.get('/api/download-export/:filename', (req, res) => {
     res.download(filePath, filename);
   } catch (err) {
     console.error('Fehler beim Download:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete Export - löscht Datei aus Workspace/Exports
+app.delete('/api/delete-export/:filename', (req, res) => {
+  try {
+    const filename = decodeURIComponent(req.params.filename);
+    if (filename.includes('..') || filename.includes('/') || filename.startsWith('.')) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+
+    const exportsPath = getExportsPath();
+    const filePath = path.join(exportsPath, filename);
+
+    // Sicherheits-Check: muss im Exports-Ordner liegen
+    if (!filePath.startsWith(exportsPath)) {
+      return res.status(400).json({ error: 'Path traversal detected' });
+    }
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // Tatsächlich löschen
+    fs.unlinkSync(filePath);
+    console.log(`✓ Export gelöscht: ${filename}`);
+    res.json({ success: true, deleted: filename });
+  } catch (err) {
+    console.error('Fehler beim Löschen:', err);
     res.status(500).json({ error: err.message });
   }
 });
