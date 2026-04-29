@@ -568,6 +568,56 @@ def get_bundled_scripts_dir():
 def get_folder(folder_name):
     return os.path.join(get_base_folder(), folder_name)
 
+def clear_workspace_for_download(logger=None):
+    """
+    Leert die Arbeitsordner BEVOR ein Download-Workflow gestartet wird.
+
+    - 01-Input RAW files: KOMPLETT geleert (inkl. Unterordner)
+    - 02-Webcheck: Nur DATEIEN in den Unterordnern (Struktur bleibt!)
+                   So bleibt die Lightroom-Export-Ordnerstruktur erhalten.
+    """
+    paths_d = get_paths()
+    input_folder = paths_d['input_batchfiles']
+    webcheck_folder = paths_d['web_check']
+
+    # 1) Input RAW files: alles weg (inkl. Unterordner)
+    if os.path.exists(input_folder):
+        for item in os.listdir(input_folder):
+            if item.startswith('.'):
+                continue  # .DS_Store etc. behalten
+            item_path = os.path.join(input_folder, item)
+            try:
+                import shutil as _sh
+                if os.path.isfile(item_path):
+                    os.remove(item_path)
+                elif os.path.isdir(item_path):
+                    _sh.rmtree(item_path)
+            except Exception as e:
+                if logger:
+                    logger.warning(f"Fehler beim Löschen von {item}: {e}")
+        if logger:
+            logger.info(f"Input-Ordner geleert: {input_folder}")
+
+    # 2) Webcheck: NUR Dateien in Unterordnern - Ordnerstruktur bleibt!
+    if os.path.exists(webcheck_folder):
+        cleaned = 0
+        for root, dirs, files in os.walk(webcheck_folder):
+            # Top-Level direkt überspringen - nur in Unterordnern löschen
+            if os.path.normpath(root) == os.path.normpath(webcheck_folder):
+                continue
+            for f in files:
+                if f.startswith('.'):
+                    continue
+                try:
+                    os.remove(os.path.join(root, f))
+                    cleaned += 1
+                except Exception as e:
+                    if logger:
+                        logger.warning(f"Fehler beim Löschen von {f}: {e}")
+        if logger:
+            logger.info(f"Webcheck-Dateien aus Unterordnern entfernt: {cleaned} (Ordnerstruktur bleibt)")
+
+
 def get_paths():
     base = get_base_folder()
     scripts_dir = get_bundled_scripts_dir()

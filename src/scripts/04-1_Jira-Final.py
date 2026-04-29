@@ -167,13 +167,50 @@ def _do_rename(folder, old_name, new_name):
         return None
 
 
-def _set_keywords(file_path, keywords):
-    """Keywords per exiftool in Datei schreiben."""
+def _has_existing_keywords(file_path):
+    """Prüft ob das Bild bereits Keywords hat (z.B. aus Lightroom-Export)."""
     try:
-        cmd = [EXIFTOOL, "-overwrite_original"] + [f"-XMP:Subject+={kw}" for kw in keywords] + [file_path]
+        result = subprocess.run(
+            [EXIFTOOL, '-s', '-s', '-s', '-XMP:Subject', '-IPTC:Keywords', file_path],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _set_keywords(file_path, keywords, force=False):
+    """
+    Keywords per exiftool in Datei schreiben.
+
+    WICHTIG: Wenn das Bild BEREITS Keywords hat (z.B. aus Lightroom-Export),
+    werden die NICHT überschrieben - Lightroom-Keywords sind die Quelle der Wahrheit.
+
+    Mit force=True werden Keywords trotzdem ergänzt.
+    """
+    if not keywords:
+        return
+
+    # Existing keywords aus Lightroom respektieren
+    if not force and _has_existing_keywords(file_path):
+        logger.debug(f"  Keywords aus Bild übernommen (kein Überschreiben): {os.path.basename(file_path)}")
+        return
+
+    try:
+        # Schreibe in beide: XMP:Subject UND IPTC:Keywords (für DAM-Kompatibilität)
+        cmd = [EXIFTOOL, "-overwrite_original"]
+        for kw in keywords:
+            cmd.append(f"-XMP:Subject+={kw}")
+            cmd.append(f"-IPTC:Keywords+={kw}")
+        cmd.append(file_path)
+
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
         if result.returncode != 0:
-            logger.warning(f"Exiftool-Fehler {os.path.basename(file_path)}: {result.stderr.strip()}")
+            logger.warning(f"Exiftool-Fehler {os.path.basename(file_path)}: {result.stderr.strip()[:200]}")
+        else:
+            logger.info(f"  Fallback-Keywords gesetzt (Bild hatte keine): {keywords} → {os.path.basename(file_path)}")
     except subprocess.TimeoutExpired:
         logger.warning(f"Exiftool-Timeout: {os.path.basename(file_path)}")
     except Exception as e:
@@ -455,7 +492,7 @@ def update_jira_ticket(ticket_key, image_count, article_count):
     - customfield_10303 = Bildanzahl
     - customfield_10299 = Artikelanzahl
     - Assignee = Reporter (Ticket-Ersteller)
-    - Kommentar mit @Mention
+    - Kommentar mit @Mention (Jira Cloud Format)
     - Transition auf 'QA'
     """
     try:
@@ -467,38 +504,77 @@ def update_jira_ticket(ticket_key, image_count, article_count):
 
         # Reporter auslesen
         reporter = issue.fields.reporter
-        reporter_id = reporter.accountId
-        reporter_name = reporter.displayName
+        if not reporter:
+            logger.warning(f"Kein Reporter für {ticket_key} - überspringe Mention/Assign")
+            reporter_id = None
+            reporter_name = None
+        else:
+            reporter_id = getattr(reporter, 'accountId', None) or getattr(reporter, 'name', None)
+            reporter_name = reporter.displayName
 
         # Felder aktualisieren + Ticket dem Reporter zuweisen
-        issue.update(fields={
+        update_fields = {
             'customfield_10303': image_count,
             'customfield_10299': article_count,
-            'assignee': {'accountId': reporter_id}
-        })
-        logger.info(f"Ticket {ticket_key} zugewiesen an: {reporter_name}")
+        }
+        if reporter_id:
+            update_fields['assignee'] = {'accountId': reporter_id}
+        try:
+            issue.update(fields=update_fields)
+            logger.info(f"Ticket {ticket_key} aktualisiert (Bilder={image_count}, Artikel={article_count})")
+            if reporter_name:
+                logger.info(f"Ticket zugewiesen an: {reporter_name}")
+        except Exception as e:
+            logger.warning(f"Issue-Update teilweise fehlgeschlagen: {e}")
 
-        # Kommentar posten
-        comment = f"[~accountid:{reporter_id}] Upload Done"
-        jira.add_comment(ticket_key, comment)
-        logger.info(f"Kommentar gepostet: {comment}")
+        # Kommentar posten - mehrere Mention-Formate ausprobieren (Jira Cloud kompatibel)
+        comment_posted = False
+        if reporter_id:
+            mention_formats = [
+                f"[~accountid:{reporter_id}] Upload Done 🦄",  # Jira Cloud aktuell
+                f"[~{reporter_id}] Upload Done 🦄",            # Alte Form (jira-server / lokal)
+            ]
+            for comment in mention_formats:
+                try:
+                    jira.add_comment(ticket_key, comment)
+                    logger.info(f"Kommentar gepostet: {comment}")
+                    comment_posted = True
+                    break
+                except Exception as e:
+                    logger.debug(f"Kommentar-Format fehlgeschlagen ({comment[:30]}...): {e}")
+
+        if not comment_posted:
+            # Fallback: einfacher Kommentar ohne Mention
+            try:
+                fallback = f"Upload Done 🦄 ({image_count} Bilder, {article_count} Artikel)"
+                jira.add_comment(ticket_key, fallback)
+                logger.info(f"Fallback-Kommentar gepostet (ohne Mention): {fallback}")
+            except Exception as e:
+                logger.warning(f"Auch Fallback-Kommentar fehlgeschlagen: {e}")
 
         # Transition zu QA
-        transitions = jira.transitions(ticket_key)
-        transition_id = None
-        transition_name = None
-        for t in transitions:
-            if "qa" in t['name'].lower():
-                transition_id = t['id']
-                transition_name = t['name']
-                break
+        try:
+            transitions = jira.transitions(ticket_key)
+            transition_id = None
+            transition_name = None
+            # Priorität: 'QA', dann 'Genehmigung'
+            for keyword in ('qa', 'genehmigung'):
+                for t in transitions:
+                    if keyword in t['name'].lower():
+                        transition_id = t['id']
+                        transition_name = t['name']
+                        break
+                if transition_id:
+                    break
 
-        if transition_id:
-            jira.transition_issue(ticket_key, transition_id)
-            logger.info(f"Ticket auf '{transition_name}' gesetzt")
-        else:
-            available = [t['name'] for t in transitions]
-            logger.warning(f"Transition 'QA' nicht gefunden. Verfuegbar: {available}")
+            if transition_id:
+                jira.transition_issue(ticket_key, transition_id)
+                logger.info(f"Ticket auf '{transition_name}' gesetzt")
+            else:
+                available = [t['name'] for t in transitions]
+                logger.warning(f"Transition 'QA'/'Genehmigung' nicht gefunden. Verfügbar: {available}")
+        except Exception as e:
+            logger.warning(f"Transition fehlgeschlagen: {e}")
 
         logger.info(f"Jira-Update OK: {image_count} Bilder, {article_count} Artikel")
         return True

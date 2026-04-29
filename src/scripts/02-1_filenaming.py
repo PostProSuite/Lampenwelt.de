@@ -148,74 +148,68 @@ def rename_files(directory):
 # PHASE 2: KLASSIFIKATION AN DAM SENDEN (async)
 # ============================================================
 
-async def send_remove_request_async(session, unique_id, category_id):
-    """Remove a category from asset in DAM (before setting new one)"""
+async def send_put_request_async(session, unique_id, category_id):
+    """Send classification to DAM API (nur ADD - wie altes funktionierendes Skript)"""
     try:
         _access_token = get_dam_token(config)
-        url = f"https://api-rs.mycliplister.com/v2.2/apis/asset/category/remove?unique_id={unique_id}&category_id={category_id}"
+        url = f"https://api-rs.mycliplister.com/v2.2/apis/asset/category/add?unique_id={unique_id}&category_id={category_id}"
         headers = {'Authorization': f'Bearer {_access_token}', 'Content-Type': 'application/json; charset=utf-8'}
         async with session.put(url, headers=headers, json={},
                               timeout=aiohttp.ClientTimeout(total=config['API_REQUEST_TIMEOUT'])) as response:
             if response.status in [200, 204]:
-                logger.info(f"Alte Kategorie {category_id} entfernt für {unique_id}")
-    except Exception:
-        pass  # Ignore – category may not have been set
-
-async def send_put_request_async(session, unique_id, target_category_id):
-    """Remove all other categories, then set the correct one in DAM"""
-    try:
-        _access_token = get_dam_token(config)
-
-        # Step 1: Remove from all OTHER known categories first (prevents duplicates)
-        all_other_ids = [cid for cid in category_mapping.values() if cid and cid != target_category_id]
-        remove_tasks = [send_remove_request_async(session, unique_id, cid) for cid in all_other_ids]
-        await asyncio.gather(*remove_tasks, return_exceptions=True)
-
-        # Step 2: Add the correct category
-        url = f"https://api-rs.mycliplister.com/v2.2/apis/asset/category/add?unique_id={unique_id}&category_id={target_category_id}"
-        headers = {'Authorization': f'Bearer {_access_token}', 'Content-Type': 'application/json; charset=utf-8'}
-
-        async with session.put(url, headers=headers, json={},
-                              timeout=aiohttp.ClientTimeout(total=config['API_REQUEST_TIMEOUT'])) as response:
-            if response.status in [200, 204]:
-                logger.info(f"Kategorie {target_category_id} gesetzt für {unique_id}")
+                logger.info(f"  Kategorie {category_id} → {unique_id}")
             else:
                 content = await response.text()
-                logger.warning(f"Fehler für {unique_id}: {response.status} - {content}")
+                logger.warning(f"  Fehler {response.status} für {unique_id}: {content[:120]}")
     except asyncio.TimeoutError:
-        logger.error(f"Timeout bei PUT-Request für {unique_id}")
+        logger.error(f"  Timeout bei PUT-Request für {unique_id}")
     except Exception as e:
-        logger.warning(f"Fehler bei PUT-Request für {unique_id}: {e}")
+        logger.warning(f"  Fehler bei PUT-Request für {unique_id}: {e}")
 
 async def process_folder_async(session, folder_name, category_id):
-    """Process files in a folder and update their DAM category"""
+    """Process files in a folder and send DAM category"""
     try:
         folder_path = os.path.join(directory, folder_name)
         if not os.path.isdir(folder_path):
-            return
+            return 0
         files = [f for f in os.listdir(folder_path) if not f.startswith('.')]
         if not files:
-            return
-        logger.info(f"Verarbeite {len(files)} Dateien in {folder_name} → Kategorie {category_id}...")
+            return 0
+        logger.info(f"Verarbeite {len(files)} Dateien in {folder_name} → Kategorie {category_id}")
+
+        sent_count = 0
         for filename in files:
             parts = filename.split('#')
             if len(parts) > 1:
                 unique_id = parts[1]
                 await send_put_request_async(session, unique_id, category_id)
+                sent_count += 1
                 await asyncio.sleep(config['API_REQUEST_DELAY'])
+            else:
+                logger.warning(f"  Kein unique_id im Filename: {filename}")
+        return sent_count
     except Exception as e:
         logger.warning(f"Fehler bei Ordner-Verarbeitung {folder_name}: {e}")
+        return 0
 
 async def send_classification_to_dam():
-    """Send all classifications to DAM (remove old + set new category per file)"""
+    """
+    Send all classifications to DAM - parallel pro Ordner (wie altes Skript).
+    Geht durch ALLE Ordner im category_mapping und schickt Kategorie für
+    jedes Bild im jeweiligen Ordner ans DAM.
+    """
     try:
-        connector = aiohttp.TCPConnector(ssl=True)
+        connector = aiohttp.TCPConnector(ssl=True, limit=10)
         async with aiohttp.ClientSession(connector=connector) as session:
-            # Sequentiell pro Ordner um Rate-Limits zu vermeiden
-            for folder_name, cat_id in category_mapping.items():
-                if cat_id:
-                    await process_folder_async(session, folder_name, cat_id)
-        logger.info("Klassifikation für alle Bilder an DAM übermittelt")
+            # Parallel pro Ordner (wie altes Skript)
+            tasks = [
+                process_folder_async(session, folder_name, cat_id)
+                for folder_name, cat_id in category_mapping.items() if cat_id
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        total_sent = sum(r for r in results if isinstance(r, int))
+        logger.info(f"Klassifikation: {total_sent} Bilder an DAM gesendet")
         return True
     except Exception as e:
         logger.error(f"Fehler bei DAM-Klassifikation: {e}")
@@ -333,7 +327,11 @@ def remove_unique_ids():
 # ============================================================
 
 def add_keywords_to_file(file_path, keywords):
-    """Add keywords to file via exiftool (works for JPG, PNG, TIF)"""
+    """
+    Add keywords to file via exiftool.
+    Funktioniert für: JPG, PNG, TIF/TIFF, WEBP, HEIC, GIF.
+    Schreibt Keywords in XMP:Subject + IPTC:Keywords (für maximale Kompatibilität).
+    """
     try:
         import subprocess
         from _utils import find_exiftool
@@ -341,17 +339,21 @@ def add_keywords_to_file(file_path, keywords):
         if not exiftool:
             logger.warning(f"exiftool nicht gefunden - überspringe Keywords für {file_path}")
             return
+
+        # Sammle alle Keyword-Argumente in einem Aufruf - schneller als einzelne Calls
+        cmd = [exiftool, "-overwrite_original"]
         for keyword in keywords:
-            try:
-                # Use XMP:Subject (works for JPG, PNG, TIF, etc.)
-                subprocess.run(
-                    [exiftool, "-overwrite_original", f"-XMP:Subject+={keyword}", file_path],
-                    capture_output=True, timeout=10, check=True
-                )
-            except subprocess.TimeoutExpired:
-                logger.warning(f"Exiftool Timeout für {file_path}")
-            except subprocess.CalledProcessError as e:
-                logger.warning(f"Exiftool Fehler für {file_path}: {e}")
+            cmd.append(f"-XMP:Subject+={keyword}")
+            cmd.append(f"-IPTC:Keywords+={keyword}")
+        cmd.append(file_path)
+
+        try:
+            subprocess.run(cmd, capture_output=True, timeout=15, check=True)
+        except subprocess.TimeoutExpired:
+            logger.warning(f"Exiftool Timeout für {file_path}")
+        except subprocess.CalledProcessError as e:
+            stderr = e.stderr.decode('utf-8', errors='ignore') if e.stderr else ''
+            logger.warning(f"Exiftool Fehler für {file_path}: {stderr[:200]}")
     except Exception as e:
         logger.warning(f"Fehler beim Keyword-Hinzufügen zu {file_path}: {e}")
 
@@ -367,10 +369,11 @@ def add_keywords_by_folder():
     """Add keywords to all files based on the subfolder they are in"""
     try:
         # Ordnername → Keywords
+        # NOTE: "Maßbild" wurde entfernt (nur "Dimensions" als sauberes Keyword)
         folder_keyword_map = {
             "A10-Mood":              ["Mood", "Ambiente"],
             "B20-Clipping":          ["Freisteller", "Clipping"],
-            "B30-Dimensions":        ["Dimensions", "Maßbild"],
+            "B30-Dimensions":        ["Dimensions"],
             "B40-Neutral":           ["Neutral", "Produktbild"],
             "C-Detail":              ["Detail"],
             "C50-Shade":             ["Shade", "Detail", "Schirm"],
@@ -393,8 +396,9 @@ def add_keywords_by_folder():
         }
 
         keyword_count = 0
-        image_exts = (".jpg", ".jpeg", ".JPG", ".JPEG", ".png", ".PNG",
-                      ".tif", ".tiff", ".TIF", ".TIFF", ".psd")
+        # ALLE Bildformate (inkl. WEBP, HEIC, GIF) - alle bekommen jetzt Keywords
+        image_exts = (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".psd",
+                      ".webp", ".heic", ".heif", ".gif", ".bmp")
 
         for subdir, dirs, files in os.walk(directory):
             folder_name = os.path.basename(subdir)
@@ -439,9 +443,14 @@ def add_keywords_by_filename():
         }
 
         keyword_count = 0
+        # ALLE Bildformate inkl. WEBP, HEIC, GIF
+        image_exts = (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".psd",
+                      ".webp", ".heic", ".heif", ".gif", ".bmp")
         for root, dirs, files in os.walk(directory):
             for file in files:
-                if file.endswith((".jpg", ".tif", ".TIF", ".png", ".PNG", ".JPG", ".psd", ".jpeg", ".JPEG")):
+                if file.startswith('.'):
+                    continue
+                if file.lower().endswith(image_exts):
                     file_path = os.path.join(root, file)
                     keywords = get_keywords_for_filename(file, mappings)
                     if keywords:

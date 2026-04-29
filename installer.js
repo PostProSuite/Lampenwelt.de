@@ -18,7 +18,11 @@ class Installer {
     const dirs = [
       this.workspace,
       path.join(this.workspace, '01-Input RAW files'),
+      // 02-Webcheck mit allen Export-Unterordnern (für Lightroom-Export)
       path.join(this.workspace, '02-Webcheck'),
+      path.join(this.workspace, '02-Webcheck', '01-Mainimage'),
+      path.join(this.workspace, '02-Webcheck', '02-Mood'),
+      path.join(this.workspace, '02-Webcheck', '03-Pos4-X'),
       path.join(this.workspace, '03-Upload'),
       path.join(this.workspace, 'Exports'),
       path.join(this.workspace, 'logs'),

@@ -48,7 +48,11 @@ if (fs.existsSync(CONFIG_PATH)) {
 const WORKSPACE_FOLDERS = [
   '01-Input RAW files',
   '02-Webcheck',
+  '02-Webcheck/01-Mainimage',
+  '02-Webcheck/02-Mood',
+  '02-Webcheck/03-Pos4-X',
   '03-Upload',
+  'Exports',
   'logs',
 ];
 

@@ -28,7 +28,8 @@ from _utils import (
     ask_input,
     move_files_by_keywords, sync_lightroom,
     CATEGORY_ID_TO_SUBFOLDER,
-    validate_file_exists, validate_directory_exists, validate_input_not_empty
+    validate_file_exists, validate_directory_exists, validate_input_not_empty,
+    clear_workspace_for_download,
 )
 
 # ============================================================
@@ -52,24 +53,14 @@ base_api_url = "https://api-rs.mycliplister.com/v2.2/apis/asset/list"
 # ============================================================
 
 def clear_input_batchfiles():
+    """Leert Input RAW (komplett) und Webcheck-Unterordner-Dateien."""
     try:
-        if os.path.exists(input_batchfiles_folder):
-            for item in os.listdir(input_batchfiles_folder):
-                item_path = os.path.join(input_batchfiles_folder, item)
-                try:
-                    if os.path.isfile(item_path):
-                        os.remove(item_path)
-                    elif os.path.isdir(item_path):
-                        shutil.rmtree(item_path)
-                except Exception as e:
-                    logger.warning(f"Fehler beim Löschen von {item}: {e}")
-            logger.info(f"Input-Ordner geleert: {input_batchfiles_folder}")
-        else:
-            os.makedirs(input_batchfiles_folder, exist_ok=True)
-            logger.info(f"Input-Ordner erstellt: {input_batchfiles_folder}")
+        # Input RAW Ordner sicherstellen
+        os.makedirs(input_batchfiles_folder, exist_ok=True)
+        clear_workspace_for_download(logger)
         return True
     except Exception as e:
-        logger.error(f"Fehler beim Löschen des Input-Ordners: {e}")
+        logger.error(f"Fehler beim Leeren der Workspace-Ordner: {e}")
         return False
 
 # ============================================================

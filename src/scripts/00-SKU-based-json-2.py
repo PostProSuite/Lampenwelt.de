@@ -29,7 +29,8 @@ from _utils import (
     ask_input, ask_confirm,
     move_files_by_keywords, sync_lightroom,
     CATEGORY_ID_TO_SUBFOLDER,
-    validate_file_exists, validate_directory_exists, validate_input_not_empty
+    validate_file_exists, validate_directory_exists, validate_input_not_empty,
+    clear_workspace_for_download,
 )
 
 # ============================================================
@@ -240,26 +241,12 @@ def request_skus():
 # ============================================================
 
 def clear_input_batchfiles():
-    """Leert den Input-Batchfiles Ordner vor dem Download"""
+    """Leert Input RAW (komplett) und Webcheck-Unterordner-Dateien."""
     try:
-        paths = get_paths()
-        input_folder = paths['input']
-        if not os.path.exists(input_folder):
-            logger.info(f"Input-Ordner existiert nicht: {input_folder}")
-            return True
-        for item in os.listdir(input_folder):
-            item_path = os.path.join(input_folder, item)
-            try:
-                if os.path.isfile(item_path):
-                    os.remove(item_path)
-                elif os.path.isdir(item_path):
-                    shutil.rmtree(item_path)
-            except Exception as e:
-                logger.warning(f"Fehler beim Löschen von {item}: {e}")
-        logger.info(f"Input-Ordner geleert: {input_folder}")
+        clear_workspace_for_download(logger)
         return True
     except Exception as e:
-        logger.error(f"Fehler beim Leeren des Input-Ordners: {e}")
+        logger.error(f"Fehler beim Leeren der Workspace-Ordner: {e}")
         return False
 
 if __name__ == "__main__":

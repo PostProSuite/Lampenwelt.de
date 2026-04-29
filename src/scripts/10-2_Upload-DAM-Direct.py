@@ -469,30 +469,51 @@ def upload_to_sftp(local_path, sftp_filename):
 # BILDER INS DAM HOCHLADEN (via SFTP-URL)
 # ============================================================
 
+def _parse_sku_and_position(filename):
+    """
+    Parsed Filename `{SKU}_{position}.{ext}` → (sku, position).
+    z.B. '10048975_1.jpg' → ('10048975', 1)
+         '10048975_2_unique123.jpg' → ('10048975', 2)
+    Returns (None, None) wenn nicht parsbar.
+    """
+    name_no_ext = os.path.splitext(filename)[0]
+    # Match: SKU (7-8 digits) _ position (1-2 digits)
+    m = re.match(r'^(\d{7,8})_(\d{1,2})(?:[_#].*)?$', name_no_ext)
+    if m:
+        return m.group(1), int(m.group(2))
+    # Fallback: nur SKU
+    m2 = re.match(r'^(\d{7,8})', name_no_ext)
+    if m2:
+        return m2.group(1), None
+    return None, None
+
+
 def upload_single_image(filepath, default_category_id, subfolder=None):
     """
     Upload image to SFTP, then register with DAM.
 
-    GENAU wie altes 10-1_Upload-FTP-Folder.py:
-    - MINIMAL-Insert: nur source, fileName, categories
-    - KEIN title, KEIN webEnabled, KEIN products, KEIN tags
-    - Das DAM extrahiert Keywords automatisch aus dem Bild
-    - webEnabled triggert sonst "Worflow-Error" Kategorie im DAM
+    Workflow (wie altes Skript + Position/Keywords nachträglich):
+    1. Insert MINIMAL (source, fileName, categories) - wie altes Skript
+    2. NACH Insert: products mit position setzen (für SKU+Position-Referenz im DAM)
+    3. NACH Insert: tags setzen (Keywords aus Lightroom-Export)
 
-    Die korrekte Kategorie kommt aus dem Subfolder (falls erkannt),
-    ansonsten DEFAULT_CATEGORY_ID = 591672 (wie altes Skript).
+    Wichtig: KEIN webEnabled - triggert sonst "Worflow-Error" im DAM!
     """
     filename = os.path.basename(filepath)
     try:
         # Step 0: Resize image to max 1800x1800 (Resize behält EXIF/XMP/IPTC)
         resize_image_to_1800(filepath)
 
-        # Step 1: Korrekte Kategorie bestimmen
+        # Step 1: SKU + Position aus Filename
+        sku, position = _parse_sku_and_position(filename)
+
+        # Step 2: Keywords aus Bild lesen (Lightroom-Export, exiftool-Set)
+        image_keywords = get_image_keywords(filepath)
+
+        # Step 3: Korrekte Kategorie bestimmen
         # Priority: Subfolder-Mapping > EXIF-Keywords > default
         category_id = SUBFOLDER_TO_CATEGORY.get(subfolder) if subfolder else None
-        if not category_id:
-            # Aus Bild-Keywords lesen (für Auto-Kategorisierung)
-            image_keywords = get_image_keywords(filepath)
+        if not category_id and image_keywords:
             for kw in image_keywords:
                 cat_id = KEYWORD_TO_CATEGORY_ID.get(kw)
                 if cat_id:
@@ -502,15 +523,15 @@ def upload_single_image(filepath, default_category_id, subfolder=None):
         if not category_id:
             category_id = default_category_id
 
-        # Step 2: Upload to SFTP
+        # Step 4: Upload to SFTP
         if not upload_to_sftp(filepath, filename):
             logger.warning(f"  SFTP-Upload fehlgeschlagen: {filename}")
             return False
 
-        # Step 3: Construct HTTPS URL for DAM API
+        # Step 5: Construct HTTPS URL for DAM API
         sftp_url = f"https://clup01.cliplister.com/files/{config['SFTP_USERNAME']}{config['SFTP_REMOTE_DIR']}/{filename}".replace('\\', '/')
 
-        # Step 4: MINIMAL Insert (wie altes funktionierendes Skript!)
+        # Step 6: MINIMAL Insert (wie altes funktionierendes Skript!)
         # Das DAM extrahiert Keywords/Title automatisch aus dem Bild
         headers = get_dam_headers()
         payload = {
@@ -532,6 +553,22 @@ def upload_single_image(filepath, default_category_id, subfolder=None):
             result = response.json() if response.text else {}
             unique_id = result.get('uniqueId', '') or result.get('unique_id', '')
             logger.info(f"  Upload OK: {filename} | Kategorie {category_id} ✓")
+
+            # Step 7: Nach erfolgreichem Insert - Position + Keywords NACHRÜSTEN
+            if unique_id:
+                # 7a) Products/Position (SKU-Verknüpfung mit Position)
+                if sku and position is not None:
+                    _set_asset_product(unique_id, sku, position, filename, filepath)
+                elif sku:
+                    _set_asset_product(unique_id, sku, None, filename, filepath)
+
+                # 7b) Tags (Keywords) falls vorhanden und vom DAM nicht auto-extrahiert
+                if image_keywords:
+                    if not _verify_keywords_saved(unique_id, image_keywords):
+                        logger.info(f"  ⚠ DAM hat Keywords nicht auto-extrahiert - setze separat...")
+                        update_asset_keywords(unique_id, image_keywords, filename)
+                    else:
+                        logger.info(f"  ✓ DAM hat Keywords automatisch extrahiert: {image_keywords}")
             return True
         else:
             logger.warning(f"  FEHLER: {filename}: HTTP {response.status_code} - {response.text[:200]}")
@@ -543,6 +580,51 @@ def upload_single_image(filepath, default_category_id, subfolder=None):
     except Exception as e:
         logger.error(f"  FEHLER: {filename}: {e}")
         return False
+
+
+def _set_asset_product(unique_id, sku, position, filename, filepath=None):
+    """
+    Setzt Product-Verknüpfung (SKU + Position) am DAM-Asset.
+    Dies stellt die Referenz "Asset gehört zu Artikel SKU an Position N" her.
+    """
+    try:
+        filename_no_ext = os.path.splitext(filename)[0]
+        product = {"requestKey": sku, "title": filename_no_ext, "keyType": 100}
+        if position is not None:
+            product["position"] = position
+
+        # Try update via asset/update with products array
+        update_url = f"{DAM_API_BASE}/asset/update?unique_id={unique_id}"
+        resp = requests.put(
+            update_url,
+            headers=get_dam_headers(),
+            json={"products": [product]},
+            timeout=30
+        )
+        if resp.status_code in [200, 204]:
+            pos_log = f" Pos {position}" if position is not None else ""
+            logger.info(f"  ✓ Position: SKU {sku}{pos_log} → {filename}")
+            return True
+        else:
+            logger.debug(f"  products inline failed HTTP {resp.status_code}: {resp.text[:150]}")
+
+        # Fallback: dedicated product/add endpoint
+        try:
+            product_add_url = f"{DAM_API_BASE}/asset/product/add?unique_id={unique_id}&request_key={sku}"
+            if position is not None:
+                product_add_url += f"&position={position}"
+            resp2 = requests.put(product_add_url, headers=get_dam_headers(), json={}, timeout=15)
+            if resp2.status_code in [200, 204]:
+                pos_log = f" Pos {position}" if position is not None else ""
+                logger.info(f"  ✓ Position via /product/add: SKU {sku}{pos_log}")
+                return True
+            else:
+                logger.warning(f"  Position-Update fehlgeschlagen: HTTP {resp2.status_code}")
+        except Exception as e:
+            logger.debug(f"  /product/add Exception: {e}")
+    except Exception as e:
+        logger.warning(f"  Fehler beim Position-Setzen für {filename}: {e}")
+    return False
 
 
 def upload_all_images(category_id):
