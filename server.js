@@ -45,12 +45,18 @@ if (fs.existsSync(CONFIG_PATH)) {
 }
 
 // ═══ WORKSPACE INIT ═══
+// 01-Input RAW files: FLAT (keine Unterordner — Download legt Bilder direkt rein)
+// 02-Webcheck: drei Lightroom-Export-Unterordner (Mainimage / Mood / Pos4-X)
+const WEBCHECK_SUBFOLDERS = [
+  '01-Mainimage',
+  '02-Mood',
+  '03-Pos4-X',
+];
+
 const WORKSPACE_FOLDERS = [
   '01-Input RAW files',
   '02-Webcheck',
-  '02-Webcheck/01-Mainimage',
-  '02-Webcheck/02-Mood',
-  '02-Webcheck/03-Pos4-X',
+  ...WEBCHECK_SUBFOLDERS.map(s => `02-Webcheck/${s}`),
   '03-Upload',
   'Exports',
   'logs',
@@ -83,6 +89,92 @@ function initWorkspace() {
   }
 
   return { workspace, created, status: created.length > 0 ? 'created' : 'ok' };
+}
+
+// ═══ CLEANUP VOR DOWNLOAD RAW ═══
+// Wird vor jedem Download-RAW-Workflow (ID 0 = SKU, ID 1 = Category) aufgerufen.
+// Räumt zwei Bereiche:
+//   1) 01-Input RAW files  → komplett rekursiv leeren (Files + evtl. Subfolders;
+//                            Parent-Ordner bleibt stehen)
+//   2) 02-Webcheck         → in JEDEM Unterordner nur die Dateien löschen.
+//                            Webcheck selbst und seine Unterordner bleiben stehen
+//                            (Lightroom hat sie verlinkt — Ordner löschen würde
+//                            Lightroom-Sync brechen).
+// Gibt eine kurze Status-Zusammenfassung zurück, damit der Workflow-Stream das
+// im UI als Log-Zeile zeigen kann.
+function cleanupBeforeDownloadRaw() {
+  const workspace = resolveWorkspace();
+  if (!workspace) {
+    return { ok: false, reason: 'no_workspace', removedInput: 0, removedWebcheck: 0 };
+  }
+
+  let removedInput = 0;
+  let removedWebcheck = 0;
+  const errors = [];
+
+  // ── 1) 01-Input RAW files: rekursiv leeren ─────────────────────
+  const inputRaw = path.join(workspace, '01-Input RAW files');
+  if (fs.existsSync(inputRaw)) {
+    try {
+      for (const entry of fs.readdirSync(inputRaw)) {
+        if (entry.startsWith('.')) continue; // .DS_Store etc. lassen
+        const p = path.join(inputRaw, entry);
+        try {
+          const stat = fs.lstatSync(p);
+          if (stat.isDirectory()) {
+            fs.rmSync(p, { recursive: true, force: true });
+          } else {
+            fs.unlinkSync(p);
+          }
+          removedInput++;
+        } catch (err) {
+          errors.push(`01-Input/${entry}: ${err.message}`);
+        }
+      }
+    } catch (err) {
+      errors.push(`01-Input read: ${err.message}`);
+    }
+  }
+
+  // ── 2) 02-Webcheck: nur Dateien in Unterordnern löschen ────────
+  const webcheck = path.join(workspace, '02-Webcheck');
+  if (fs.existsSync(webcheck)) {
+    try {
+      for (const sub of fs.readdirSync(webcheck)) {
+        if (sub.startsWith('.')) continue;
+        const subPath = path.join(webcheck, sub);
+        let stat;
+        try { stat = fs.lstatSync(subPath); } catch (_) { continue; }
+        if (!stat.isDirectory()) continue; // nur Ordner verarbeiten
+        try {
+          for (const file of fs.readdirSync(subPath)) {
+            if (file.startsWith('.')) continue;
+            const filePath = path.join(subPath, file);
+            try {
+              const fstat = fs.lstatSync(filePath);
+              if (fstat.isFile()) {
+                fs.unlinkSync(filePath);
+                removedWebcheck++;
+              }
+              // Unterordner innerhalb eines Webcheck-Subfolders bleiben unangetastet
+            } catch (err) {
+              errors.push(`02-Webcheck/${sub}/${file}: ${err.message}`);
+            }
+          }
+        } catch (err) {
+          errors.push(`02-Webcheck/${sub} read: ${err.message}`);
+        }
+      }
+    } catch (err) {
+      errors.push(`02-Webcheck read: ${err.message}`);
+    }
+  }
+
+  if (errors.length > 0) {
+    console.warn(`⚠ Cleanup: ${errors.length} Fehler:`, errors.slice(0, 5));
+  }
+  console.log(`🧹 Cleanup vor Download RAW: 01-Input=${removedInput} entfernt, 02-Webcheck=${removedWebcheck} Dateien entfernt`);
+  return { ok: true, removedInput, removedWebcheck, errors };
 }
 
 // Workspace beim Start prüfen/erstellen
@@ -298,6 +390,29 @@ app.post('/api/run-workflow', (req, res) => {
     res.write(`data: ${JSON.stringify({ type: 'done', code: 1, status: 'error', message: 'Missing required input' })}\n\n`);
     res.end();
     return;
+  }
+
+  // ═══ CLEANUP vor Download RAW ═══
+  // Bei Workflow 0 (SKU) oder 1 (Category) den Input-Bereich für das neue Batch leeren:
+  //   - 01-Input RAW files komplett (inkl. Subfolders)
+  //   - 02-Webcheck nur Dateien in Unterordnern (Ordner bleiben — Lightroom-Sync!)
+  if (workflow_id === 0 || workflow_id === 1) {
+    const ts2 = new Date().toLocaleTimeString('de-DE');
+    res.write(`data: ${JSON.stringify({ type: 'log', text: `[${ts2}] 🧹 Cleanup: 01-Input RAW + Webcheck-Inhalte werden geleert…`, color: 'normal' })}\n\n`);
+    try {
+      const result = cleanupBeforeDownloadRaw();
+      if (result.ok) {
+        const summary = `[${new Date().toLocaleTimeString('de-DE')}] ✓ Cleanup OK — 01-Input: ${result.removedInput} entfernt, 02-Webcheck: ${result.removedWebcheck} Dateien entfernt`;
+        res.write(`data: ${JSON.stringify({ type: 'log', text: summary, color: 'green' })}\n\n`);
+        if (result.errors && result.errors.length > 0) {
+          res.write(`data: ${JSON.stringify({ type: 'log', text: `⚠ ${result.errors.length} Cleanup-Fehler (siehe App-Logs)`, color: 'red' })}\n\n`);
+        }
+      } else {
+        res.write(`data: ${JSON.stringify({ type: 'log', text: `⚠ Cleanup übersprungen: ${result.reason}`, color: 'red' })}\n\n`);
+      }
+    } catch (err) {
+      res.write(`data: ${JSON.stringify({ type: 'log', text: `⚠ Cleanup-Fehler: ${err.message} — Workflow läuft trotzdem weiter`, color: 'red' })}\n\n`);
+    }
   }
 
   // Start Python process with config environment variables + input value

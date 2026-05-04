@@ -14,15 +14,20 @@ class Installer {
   }
 
   // Setup Workspace Ordnerstruktur
+  // 01-Input RAW files: FLAT (keine Unterordner — Download legt Bilder direkt rein)
+  // 02-Webcheck: drei Lightroom-Export-Unterordner (Mainimage / Mood / Pos4-X)
   setupWorkspace() {
+    const webcheckSubfolders = [
+      '01-Mainimage',
+      '02-Mood',
+      '03-Pos4-X',
+    ];
+
     const dirs = [
       this.workspace,
       path.join(this.workspace, '01-Input RAW files'),
-      // 02-Webcheck mit allen Export-Unterordnern (für Lightroom-Export)
       path.join(this.workspace, '02-Webcheck'),
-      path.join(this.workspace, '02-Webcheck', '01-Mainimage'),
-      path.join(this.workspace, '02-Webcheck', '02-Mood'),
-      path.join(this.workspace, '02-Webcheck', '03-Pos4-X'),
+      ...webcheckSubfolders.map(name => path.join(this.workspace, '02-Webcheck', name)),
       path.join(this.workspace, '03-Upload'),
       path.join(this.workspace, 'Exports'),
       path.join(this.workspace, 'logs'),

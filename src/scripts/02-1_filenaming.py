@@ -44,6 +44,26 @@ json_file_path = os.path.join(paths['json'], "DAM-Request-Download.json")
 
 base_url = "https://api-rs.mycliplister.com/v2.2/apis"
 
+# ============================================================
+# UNTERSTÜTZTE BILDFORMATE
+# ============================================================
+# Zentrale Liste aller Bildformate die das Skript verarbeitet.
+# Die Tupel enthalten NUR lowercase — Match passiert immer per
+# `file.lower().endswith(IMAGE_EXTS)`, damit Klein- UND Großschreibung
+# (z.B. .JPG, .Jpeg, .TIF, .PSD) automatisch abgedeckt sind.
+IMAGE_EXTS = (
+    ".jpg", ".jpeg",
+    ".png",
+    ".tif", ".tiff",
+    ".psd",
+    ".webp",
+    ".heic", ".heif",
+    ".gif",
+    ".bmp",
+)
+# Phase 4 (remove_unique_ids) verarbeitet zusätzlich PDF-Maßbilder
+DOC_EXTS = IMAGE_EXTS + (".pdf",)
+
 # Kategorie-Mapping für DAM
 category_mapping = {
     "C-Detail": "408721",
@@ -271,7 +291,8 @@ def update_titles_in_dam():
             futures = []
             for root, dirs, files in os.walk(directory):
                 for file in files:
-                    if file.lower().endswith(('.jpg', '.jpeg')):
+                    # alle Bildformate (Klein + Groß werden via .lower() abgedeckt)
+                    if file.lower().endswith(IMAGE_EXTS):
                         file_path = os.path.join(root, file)
                         if "#" in file:
                             unique_id = file.split("#")[1].split(".")[0]
@@ -302,7 +323,8 @@ def remove_unique_ids():
         removed_count = 0
         for dirpath, dirnames, filenames in os.walk(directory):
             for dateiname in filenames:
-                if dateiname.endswith(('.jpg', '.jpeg', '.png', '.webp', '.tif', '.pdf')):
+                # alle Bild- + PDF-Formate, case-insensitive
+                if dateiname.lower().endswith(DOC_EXTS):
                     start_index = dateiname.find('#')
                     end_index = dateiname.find('#', start_index + 1)
                     if start_index != -1 and end_index != -1:
@@ -328,34 +350,106 @@ def remove_unique_ids():
 
 def add_keywords_to_file(file_path, keywords):
     """
-    Add keywords to file via exiftool.
-    Funktioniert für: JPG, PNG, TIF/TIFF, WEBP, HEIC, GIF.
-    Schreibt Keywords in XMP:Subject + IPTC:Keywords (für maximale Kompatibilität).
+    Schreibt Keywords per exiftool ins Bild.
+    Funktioniert für: JPG, JPEG, PNG, TIF, TIFF, PSD, WEBP, HEIC, HEIF, GIF, BMP.
+    Klein- und Großschreibung der Datei-Endung ist egal.
+
+    Strategie:
+      1) EIN exiftool-Aufruf mit ALLEN Keywords (XMP:Subject + IPTC:Keywords, +=add)
+      2) Fallback bei WEBP/HEIC/HEIF wenn (1) fehlschlägt: Zweiter Versuch mit `=` (set
+         statt add). Diese Container haben oft keinen XMP-Block beim ersten Schreiben,
+         dann scheitert += und set funktioniert.
+      3) Verify: nach dem Schreiben die Tags zurücklesen und im Log mit ✓/✗ markieren —
+         so sieht man im Workflow-Log SOFORT wenn ein Format/Bild Probleme macht.
+
+    Returns True wenn alle erwarteten Keywords nach dem Schreiben im Bild stehen.
     """
+    if not keywords:
+        return False
     try:
         import subprocess
         from _utils import find_exiftool
         exiftool = find_exiftool()
         if not exiftool:
             logger.warning(f"exiftool nicht gefunden - überspringe Keywords für {file_path}")
-            return
+            return False
 
-        # Sammle alle Keyword-Argumente in einem Aufruf - schneller als einzelne Calls
+        ext = os.path.splitext(file_path)[1].lower()
+        fname = os.path.basename(file_path)
+
+        # ── Versuch 1: alle Keywords in EINEM Aufruf, += (additiv) ───────
         cmd = [exiftool, "-overwrite_original"]
-        for keyword in keywords:
-            cmd.append(f"-XMP:Subject+={keyword}")
-            cmd.append(f"-IPTC:Keywords+={keyword}")
+        for kw in keywords:
+            cmd.append(f"-XMP:Subject+={kw}")
+            cmd.append(f"-IPTC:Keywords+={kw}")
         cmd.append(file_path)
 
         try:
-            subprocess.run(cmd, capture_output=True, timeout=15, check=True)
+            proc = subprocess.run(cmd, capture_output=True, timeout=15)
         except subprocess.TimeoutExpired:
-            logger.warning(f"Exiftool Timeout für {file_path}")
-        except subprocess.CalledProcessError as e:
-            stderr = e.stderr.decode('utf-8', errors='ignore') if e.stderr else ''
-            logger.warning(f"Exiftool Fehler für {file_path}: {stderr[:200]}")
+            logger.warning(f"  Exiftool-Timeout für {fname}")
+            return False
+
+        write_ok = (proc.returncode == 0)
+        write_err = ''
+        if proc.stderr:
+            write_err = proc.stderr.decode('utf-8', errors='ignore').strip()[:200]
+
+        # ── Fallback für WEBP/HEIC/HEIF: mit `=` (set) statt `+=` (add) ──
+        if not write_ok and ext in (".webp", ".heic", ".heif"):
+            logger.info(f"  exiftool += fehlgeschlagen für {fname} ({write_err}) — retry mit `=` set")
+            cmd2 = [exiftool, "-overwrite_original"]
+            cmd2.append(f"-XMP:Subject={', '.join(keywords)}")
+            cmd2.append(f"-IPTC:Keywords={', '.join(keywords)}")
+            cmd2.append(file_path)
+            try:
+                proc2 = subprocess.run(cmd2, capture_output=True, timeout=15)
+                write_ok = (proc2.returncode == 0)
+                if not write_ok and proc2.stderr:
+                    write_err = proc2.stderr.decode('utf-8', errors='ignore').strip()[:200]
+                    logger.warning(f"  Auch retry fehlgeschlagen für {fname}: {write_err}")
+            except subprocess.TimeoutExpired:
+                logger.warning(f"  Exiftool-Retry-Timeout für {fname}")
+        elif not write_ok:
+            logger.warning(f"  Exiftool-Schreibfehler für {fname}: {write_err}")
+
+        # ── Verify: zurücklesen und prüfen ob Keywords wirklich drin sind ─
+        try:
+            verify_cmd = [exiftool, "-j", "-XMP:Subject", "-IPTC:Keywords", file_path]
+            vproc = subprocess.run(verify_cmd, capture_output=True, timeout=10)
+            if vproc.returncode == 0 and vproc.stdout:
+                data = json.loads(vproc.stdout.decode('utf-8', errors='ignore'))
+                if data and isinstance(data, list):
+                    meta = data[0]
+                    found = []
+                    for field in ('Subject', 'Keywords'):
+                        v = meta.get(field)
+                        if isinstance(v, list):
+                            found.extend(str(x).strip() for x in v)
+                        elif isinstance(v, str):
+                            for piece in re.split(r'[,;]', v):
+                                if piece.strip():
+                                    found.append(piece.strip())
+                    expected = set(str(k).strip() for k in keywords)
+                    found_set = set(found)
+                    missing = expected - found_set
+                    if not missing:
+                        logger.info(f"  ✓ Keywords im Bild verifiziert: {fname}")
+                        return True
+                    else:
+                        logger.warning(
+                            f"  ✗ Keywords FEHLEN nach Schreiben in {fname} "
+                            f"(erwartet: {sorted(expected)}, gefunden: {sorted(found_set)}, "
+                            f"missing: {sorted(missing)})"
+                        )
+                        return False
+        except Exception as ve:
+            logger.debug(f"  Verify-Read fehlgeschlagen für {fname}: {ve}")
+
+        return write_ok
     except Exception as e:
         logger.warning(f"Fehler beim Keyword-Hinzufügen zu {file_path}: {e}")
+        return False
 
 def get_keywords_for_filename(filename, mappings):
     """Get keywords based on filename"""
@@ -396,9 +490,6 @@ def add_keywords_by_folder():
         }
 
         keyword_count = 0
-        # ALLE Bildformate (inkl. WEBP, HEIC, GIF) - alle bekommen jetzt Keywords
-        image_exts = (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".psd",
-                      ".webp", ".heic", ".heif", ".gif", ".bmp")
 
         for subdir, dirs, files in os.walk(directory):
             folder_name = os.path.basename(subdir)
@@ -409,7 +500,8 @@ def add_keywords_by_folder():
             for file in files:
                 if file.startswith('.'):
                     continue
-                if file.lower().endswith(image_exts):
+                # alle Bildformate, case-insensitive (.JPG, .jpg, .Webp, … alle ok)
+                if file.lower().endswith(IMAGE_EXTS):
                     file_path = os.path.join(subdir, file)
                     add_keywords_to_file(file_path, keywords)
                     keyword_count += 1
@@ -443,14 +535,12 @@ def add_keywords_by_filename():
         }
 
         keyword_count = 0
-        # ALLE Bildformate inkl. WEBP, HEIC, GIF
-        image_exts = (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".psd",
-                      ".webp", ".heic", ".heif", ".gif", ".bmp")
         for root, dirs, files in os.walk(directory):
             for file in files:
                 if file.startswith('.'):
                     continue
-                if file.lower().endswith(image_exts):
+                # alle Bildformate, case-insensitive
+                if file.lower().endswith(IMAGE_EXTS):
                     file_path = os.path.join(root, file)
                     keywords = get_keywords_for_filename(file, mappings)
                     if keywords:
@@ -474,19 +564,16 @@ def check_clippings(directory):
     die die App abfängt und im Result-Rollout anzeigt.
     """
     try:
-        image_exts = (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".psd",
-                      ".JPG", ".JPEG", ".PNG", ".TIF", ".TIFF", ".PSD")
-
         all_skus = set()
         clipping_skus = set()
         clipping_folder = os.path.join(directory, "B20-Clipping")
 
-        # Alle SKUs aus allen Unterordnern sammeln
+        # Alle SKUs aus allen Unterordnern sammeln (case-insensitive über alle Bildformate)
         for subdir, dirs, files in os.walk(directory):
             for file in files:
                 if file.startswith('.'):
                     continue
-                if file.lower().endswith(image_exts):
+                if file.lower().endswith(IMAGE_EXTS):
                     sku_match = re.search(r'^(\d{7,8})', file)
                     if sku_match:
                         all_skus.add(sku_match.group(1))
@@ -496,7 +583,7 @@ def check_clippings(directory):
             for file in os.listdir(clipping_folder):
                 if file.startswith('.'):
                     continue
-                if file.lower().endswith(image_exts):
+                if file.lower().endswith(IMAGE_EXTS):
                     sku_match = re.search(r'^(\d{7,8})', file)
                     if sku_match:
                         clipping_skus.add(sku_match.group(1))

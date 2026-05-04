@@ -1,17 +1,23 @@
 """
-10-2 Upload ins DAM (via SFTP + API)
-- Lädt Webshop-Bilder aus 03-Upload per SFTP zu Cliplister
-- Sendet Source-URL per REST-API an DAM
-- Weist sie der korrekten Kategorie zu (anhand Unterordner)
-- Setzt requestKey (SKU aus Dateiname) und webEnabled=True
-- Räumt lokale Upload-Ordner auf
+10-2 Upload ins DAM (via SFTP + REST)
+=====================================
+Laedt Webshop-Bilder aus 03-Upload zu Cliplister und registriert sie im DAM.
 
-Workflow:
-  1) Bilder lokal vorbereiten (03-Upload)
-  2) Per SFTP zu clup01.cliplister.com hochladen
-  3) HTTPS-URL der API mitteilen → Asset-Insert
-  4) Asset-Update: requestKey, webEnabled, Titel setzen
-  5) Cleanup
+Verhalten matcht das alte funktionierende Skript 10-1_Upload-FTP-Folder.py:
+  1. Resize auf max 1800x1800   (Metadaten – XMP/IPTC/EXIF – bleiben erhalten!)
+  2. Duplikat-Check             (bereits im DAM vorhandene Dateinamen ueberspringen)
+  3. SFTP-Upload nach clup01.cliplister.com
+  4. DAM-Insert MINIMAL         (source/fileName/categories) → Kategorie 591672
+  5. Cleanup 03-Upload
+
+Wichtig zu wissen:
+- Filename-Konvention: {SKU}_{position}.ext  (z.B. 8505786_1.jpg)
+  → DAM erkennt SKU + Position automatisch aus dem Dateinamen.
+- Keywords kommen aus XMP:Subject / IPTC:Keywords (Lightroom-Export)
+  → DAM extrahiert sie automatisch beim Insert.
+- Beides funktioniert NUR wenn die Metadaten beim Resize NICHT verloren gehen.
+- KEINE manuellen Post-Insert Updates fuer products[]/tags[] mehr — die haben
+  den DAM-Workflow durchbrochen, der die Auto-Extraktion macht.
 """
 
 import sys
@@ -23,6 +29,7 @@ import shutil
 import logging
 import time
 import json
+import subprocess
 import requests
 import paramiko
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -31,7 +38,7 @@ from PIL import Image
 sys.path.insert(0, os.path.dirname(__file__))
 from _utils import (
     load_config, setup_logging, get_paths,
-    get_dam_token, invalidate_dam_token,
+    get_dam_token, invalidate_dam_token, find_exiftool,
 )
 
 # ============================================================
@@ -48,51 +55,49 @@ except Exception as e:
 paths = get_paths()
 upload_folder = paths['upload']  # 03-Upload
 
-# DAM API — gleiche Basis wie alle funktionierenden Scripts
-DAM_API_BASE = "https://api-rs.mycliplister.com/v2.2/apis"
+# DAM API
+DAM_API_BASE     = "https://api-rs.mycliplister.com/v2.2/apis"
 DAM_ASSET_INSERT = f"{DAM_API_BASE}/asset/insert"
-DAM_ASSET_CATEGORY_ADD = f"{DAM_API_BASE}/asset/category/add"
+DAM_ASSET_LIST   = f"{DAM_API_BASE}/asset/list"
 
-# Ziel-Kategorie: gleiche wie altes funktionierendes Skript (10-1_Upload-FTP-Folder.py)
-# Diese Kategorie triggert KEINEN problematischen DAM-Workflow,
-# und das DAM extrahiert automatisch Keywords aus dem Bild beim Insert.
+# Insert-Kategorie wie im alten funktionierenden Skript 10-1_Upload-FTP-Folder.py.
+# Nur diese Kategorie triggert NICHT den problematischen DAM-Workflow-Error.
+# DAM extrahiert auf dieser Kategorie automatisch:
+#   - Keywords aus XMP:Subject / IPTC:Keywords
+#   - SKU + Position aus Dateinamen ({SKU}_{position}.ext)
 DEFAULT_CATEGORY_ID = 591672
 
-# Alte Konstante (Input LWDE) - triggert Worflow-Error im DAM, deshalb nicht mehr Default
-INPUT_LWDE_CATEGORY_ID = 660250
-
-# Subfolder-Name → DAM-Kategorie-ID (identisch mit 02-1_filenaming.py)
-SUBFOLDER_TO_CATEGORY = {
-    "A10-Mood":           408719,
-    "B20-Clipping":       408735,
-    "B30-Dimensions":     408736,
-    "B40-Neutral":        408720,
-    "C-Detail":           408721,
-    "C50-Shade":          408753,
-    "C60-Material":       408752,
-    "C70-Switch":         408751,
-    "C80-Base_Stand":     408750,
-    "C90-Cable":          408749,
-    "C95-Split":          408747,
-    "D-Technical":        408722,
-    "D110-Remote":        408756,
-    "D120-Accesories":    408755,
-    "E130-Graphics":      408723,
-    "E130-Graphics_DE":   408778,
-    "E130-Graphics_INT":  408777,
-    "E130-Graphics_ENG":  408776,
-    "F140-Group":         408762,
-    "F-Group":            408762,
-    "G-UGC":              408760,
+# Bildkategorien im DAM (Mood, Clipping, Detail etc.).
+# NACH dem Insert weisen wir dem Asset zusaetzlich die passende Kategorie zu —
+# anhand der Bild-Keywords (XMP:Subject) — via asset/category/add.
+# Genau das gleiche Verhalten wie altes 02-1_filenaming.py Phase 2.
+KEYWORD_TO_CATEGORY_ID = {
+    'Clipping':      408735, 'Freisteller':  408735,
+    'Neutral':       408720, 'Produktbild':  408720,
+    'Mood':          408719, 'Ambiente':     408719,
+    'Technical':     408722, 'Technisch':    408722,
+    'Dimensions':    408736,
+    'Detail':        408721,
+    'Shade':         408753, 'Schirm':       408753,
+    'Material':      408752,
+    'Switch':        408751, 'Schalter':     408751,
+    'Base_Stand':    408750,
+    'Cable':         408749, 'Kabel':        408749,
+    'Split':         408747,
+    'Remote':        408756, 'Fernbedienung': 408756,
+    'Accessories':   408755, 'Zubehoer':     408755,
+    'Group':         408762, 'Gruppe':       408762,
+    'UGC':           408760,
+    'Graphics':      408723, 'Grafik':       408723,
 }
 
 
 # ============================================================
-# DAM API HELPERS
+# HELPERS
 # ============================================================
 
 def get_dam_headers():
-    """Get authorization headers for DAM API."""
+    """Auth-Header fuer DAM API."""
     token = get_dam_token(config)
     return {
         "Authorization": f"Bearer {token}",
@@ -100,341 +105,167 @@ def get_dam_headers():
     }
 
 
-# EXIF-Keyword → DAM-Kategorie-ID
-# 02-1_filenaming.py schreibt diese Keywords per exiftool in Phase 5
-KEYWORD_TO_CATEGORY_ID = {
-    'Clipping':    408735, 'Freisteller': 408735,
-    'Neutral':     408720, 'Produktbild': 408720,
-    'Mood':        408719, 'Ambiente':    408719,
-    'Technical':   408722, 'Technisch':   408722,
-    'Dimensions':  408736,
-    'Detail':      408721,
-    'Shade':       408753, 'Schirm':      408753,
-    'Material':    408752,
-    'Switch':      408751, 'Schalter':    408751,
-    'Base_Stand':  408750,
-    'Cable':       408749, 'Kabel':       408749,
-    'Split':       408747,
-    'Remote':      408756, 'Fernbedienung': 408756,
-    'Accessories': 408755, 'Zubehoer':    408755,
-    'Group':       408762, 'Gruppe':      408762,
-    'UGC':         408760,
-    'Graphics':    408723, 'Grafik':      408723,
-}
-
-
 def get_image_keywords(filepath):
-    """
-    Liest ALLE Keywords aus der Bilddatei (XMP:Subject, IPTC:Keywords, EXIF).
-    Mit ausführlichem Logging - damit wir genau sehen was passiert.
-    Gibt Liste der eindeutigen Keywords zurück.
-    """
+    """Liest Keywords aus Bilddatei – nur fuer Logging/Diagnose."""
     keywords = []
     fname = os.path.basename(filepath)
-
-    # Strategy 1: exiftool (am zuverlässigsten - liest XMP, IPTC, EXIF)
-    # Liest ALLE möglichen Keyword-Felder (Lightroom nutzt verschiedene)
-    exiftool_used = False
     try:
-        from _utils import find_exiftool
         exiftool = find_exiftool()
-        if exiftool:
-            exiftool_used = True
-            import subprocess as sp
-            # -j: JSON output, -G: group names (XMP:, IPTC:, etc)
-            # Liest alle Keyword-Varianten die Lightroom oder andere Tools setzen
-            result = sp.run(
-                [exiftool, '-j',
-                 '-XMP:Subject',           # Standard XMP keywords (Lightroom default)
-                 '-IPTC:Keywords',         # IPTC-IIM keywords
-                 '-Keywords',              # Generic keywords
-                 '-XMP-lr:HierarchicalSubject',  # Lightroom hierarchical
-                 '-XMP-dc:Subject',        # Dublin Core (alternative XMP)
-                 filepath],
-                capture_output=True, text=True, timeout=10
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                try:
-                    data = json.loads(result.stdout)
-                    if isinstance(data, list) and data:
-                        meta = data[0]
-                        # Alle möglichen Felder durchgehen
-                        for field in ('Subject', 'Keywords', 'HierarchicalSubject',
-                                      'XMP-lr:HierarchicalSubject', 'XMP-dc:Subject'):
-                            val = meta.get(field)
-                            if not val:
-                                continue
-                            if isinstance(val, list):
-                                for kw in val:
-                                    kw_str = str(kw).strip()
-                                    # HierarchicalSubject hat Format "Parent|Child"
-                                    if '|' in kw_str:
-                                        kw_str = kw_str.split('|')[-1]
-                                    if kw_str and kw_str not in keywords:
-                                        keywords.append(kw_str)
-                            else:
-                                # String form: comma- or semicolon-separated
-                                for kw in re.split(r'[,;]', str(val)):
-                                    kw = kw.strip()
-                                    if '|' in kw:
-                                        kw = kw.split('|')[-1]
-                                    if kw and kw not in keywords:
-                                        keywords.append(kw)
-                        # Diagnose: zeige rohe Metadaten wenn nichts gefunden
-                        if not keywords:
-                            logger.debug(f"  exiftool fand keine Keywords. Raw meta: {meta}")
-                except json.JSONDecodeError as e:
-                    logger.debug(f"  exiftool JSON parse error für {fname}: {e}")
-            else:
-                logger.debug(f"  exiftool returncode={result.returncode} stderr={result.stderr[:100]}")
+        if not exiftool:
+            return keywords
+        result = subprocess.run(
+            [exiftool, '-j',
+             '-XMP:Subject', '-IPTC:Keywords', '-Keywords',
+             '-XMP-lr:HierarchicalSubject', '-XMP-dc:Subject',
+             filepath],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            try:
+                data = json.loads(result.stdout)
+                if isinstance(data, list) and data:
+                    meta = data[0]
+                    for field in ('Subject', 'Keywords', 'HierarchicalSubject',
+                                  'XMP-lr:HierarchicalSubject', 'XMP-dc:Subject'):
+                        val = meta.get(field)
+                        if not val:
+                            continue
+                        vals = val if isinstance(val, list) else re.split(r'[,;]', str(val))
+                        for kw in vals:
+                            kw = str(kw).strip()
+                            if '|' in kw:
+                                kw = kw.split('|')[-1]
+                            if kw and kw not in keywords:
+                                keywords.append(kw)
+            except json.JSONDecodeError:
+                pass
     except Exception as e:
         logger.debug(f"  exiftool keyword-read fehlgeschlagen ({fname}): {e}")
-
-    # Strategy 2: XMP via Raw-Read (auch wenn exiftool was gefunden hat - findet evtl noch mehr)
-    try:
-        with open(filepath, 'rb') as f:
-            raw = f.read()
-        # Suche das XMP-Paket
-        start = raw.find(b'<rdf:RDF')
-        end   = raw.find(b'</rdf:RDF>')
-        if start != -1 and end != -1:
-            xmp = raw[start:end + len('</rdf:RDF>')].decode('utf-8', errors='ignore')
-            # Suche speziell nach dc:subject (das ist wo Lightroom Keywords ablegt)
-            subject_match = re.search(
-                r'<dc:subject>(.*?)</dc:subject>',
-                xmp, re.DOTALL
-            )
-            if subject_match:
-                subject_block = subject_match.group(1)
-                for kw in re.findall(r'<rdf:li[^>]*>([^<]+)</rdf:li>', subject_block):
-                    kw = kw.strip()
-                    if kw and kw not in keywords:
-                        keywords.append(kw)
-    except Exception as e:
-        logger.debug(f"  XMP keyword-read fehlgeschlagen ({fname}): {e}")
-
-    # Diagnose-Log: wir wollen wissen was passiert ist
-    if keywords:
-        logger.info(f"  📌 Keywords aus Bild gelesen ({fname}): {keywords}" +
-                    (f" [via exiftool]" if exiftool_used else " [via XMP-Raw]"))
-    else:
-        logger.info(f"  ⚪ KEINE Keywords im Bild gefunden ({fname})" +
-                    (f" — exiftool getestet" if exiftool_used else " — KEIN exiftool!"))
-
     return keywords
 
 
-def get_exif_category(filepath):
+def _parse_sku_and_position(filename):
+    """Filename `{SKU}_{position}.{ext}` → (sku, position) — fuer Logging."""
+    name_no_ext = os.path.splitext(filename)[0]
+    m = re.match(r'^(\d{7,8})_(\d{1,2})(?:[_#].*)?$', name_no_ext)
+    if m:
+        return m.group(1), int(m.group(2))
+    m2 = re.match(r'^(\d{7,8})', name_no_ext)
+    if m2:
+        return m2.group(1), None
+    return None, None
+
+
+def _assign_categories_from_keywords(unique_id, keywords, filename):
     """
-    Gibt DAM-Kategorie-ID basierend auf Image-Keywords zurück.
-    Nutzt get_image_keywords() für robustes Lesen.
+    Weist dem DAM-Asset zusaetzliche Kategorien zu, abhaengig von den Bild-Keywords.
+
+    Ablauf wie altes 02-1_filenaming.py Phase 2 — `asset/category/add` Endpoint.
+    Funktioniert weil Insert in 591672 (kein Workflow-Error) UND wir danach
+    spezifische Kategorien (408xxx) per category/add ergaenzen — kein update auf
+    products[]/tags[] (das hatte den Workflow gebrochen).
+
+    Mehrere Keywords koennen mehrere Kategorien zuweisen
+    (z.B. ['Detail', 'Shade'] → 408721 + 408753).
     """
-    keywords = get_image_keywords(filepath)
+    if not unique_id or not keywords:
+        return
+
+    cat_ids = []
     for kw in keywords:
         cat_id = KEYWORD_TO_CATEGORY_ID.get(kw)
-        if cat_id:
-            logger.info(f"  EXIF-Keyword '{kw}' → Kategorie {cat_id}")
-            return cat_id
-    return None
+        if cat_id and cat_id not in cat_ids:
+            cat_ids.append(cat_id)
 
+    if not cat_ids:
+        logger.info(f"  ⚠ Keine Kategorie-Mapping fuer Keywords {keywords} ({filename})")
+        return
 
-def update_asset_keywords(unique_id, keywords, filename):
-    """
-    Setzt Tags/Keywords auf das DAM-Asset.
-    Versucht MEHRERE Strategien parallel - mit ausführlichem Logging
-    damit wir genau sehen welche Cliplister-Variante funktioniert.
-    """
-    if not keywords:
-        return False
-
-    base = f"{DAM_API_BASE}/asset/update?unique_id={unique_id}"
-
-    # Verschiedene Format-Varianten die Cliplister haben könnte
-    strategies = [
-        # Format A: tags als Array von Strings
-        ('tags-array',     {"tags": keywords}),
-        # Format B: keywords als Array von Strings
-        ('keywords-array', {"keywords": keywords}),
-        # Format C: tags als comma-separated string
-        ('tags-csv',       {"tags": ", ".join(keywords)}),
-        # Format D: keywords als comma-separated string
-        ('keywords-csv',   {"keywords": ", ".join(keywords)}),
-        # Format E: tags als Array von Objekten {name: ...}
-        ('tags-objects',   {"tags": [{"name": k} for k in keywords]}),
-        # Format F: meta.keywords (verschachtelt)
-        ('meta-keywords',  {"meta": {"keywords": keywords}}),
-    ]
-
-    for label, payload in strategies:
+    headers = get_dam_headers()
+    timeout = config.get('API_REQUEST_TIMEOUT', 120)
+    for cat_id in cat_ids:
         try:
-            resp = requests.put(base, headers=get_dam_headers(), json=payload, timeout=30)
-            body = resp.text[:200] if resp.text else '(empty)'
-            logger.info(f"  🏷️  Tag-Strategy [{label}] → HTTP {resp.status_code} {body}")
-            if resp.status_code in [200, 204]:
-                # Verify it actually saved by GET-ing the asset
-                if _verify_keywords_saved(unique_id, keywords):
-                    logger.info(f"  ✅ Keywords ({len(keywords)}) erfolgreich gespeichert via [{label}]")
-                    return True
-                else:
-                    logger.info(f"  ⚠ HTTP {resp.status_code} aber Keywords nicht gefunden bei GET — versuche nächste Strategy")
-        except Exception as e:
-            logger.debug(f"  Tag-Strategy [{label}] Exception: {e}")
-
-    # Strategy G: einzelner tag/add Endpoint pro Keyword
-    success_count = 0
-    for kw in keywords:
-        for endpoint_template in [
-            f"{DAM_API_BASE}/asset/tag/add?unique_id={unique_id}&tag={requests.utils.quote(kw)}",
-            f"{DAM_API_BASE}/asset/keyword/add?unique_id={unique_id}&keyword={requests.utils.quote(kw)}",
-        ]:
-            try:
-                resp = requests.put(endpoint_template, headers=get_dam_headers(), json={}, timeout=15)
-                if resp.status_code in [200, 204]:
-                    success_count += 1
-                    break
-                else:
-                    logger.debug(f"  /tag/add [{kw}] → HTTP {resp.status_code}")
-            except Exception as e:
-                logger.debug(f"  /tag/add [{kw}] Exception: {e}")
-
-    if success_count > 0:
-        logger.info(f"  ✅ Tags: {success_count}/{len(keywords)} via einzelne tag/add Calls gesetzt")
-        return True
-
-    logger.warning(f"  ⚠ ALLE Strategien für Keyword-Übermittlung fehlgeschlagen ({filename})")
-    logger.warning(f"     Keywords waren: {keywords}")
-    return False
-
-
-def _verify_keywords_saved(unique_id, expected_keywords):
-    """GET das Asset und prüfe ob Keywords/Tags wirklich gespeichert sind."""
-    try:
-        url = f"{DAM_API_BASE}/asset/list?unique_id={unique_id}&limit=1"
-        resp = requests.get(url, headers=get_dam_headers(), timeout=15)
-        if resp.status_code != 200:
-            return False
-        data = resp.json()
-        # Asset kann an verschiedenen Stellen sein
-        assets = data.get('assets') if isinstance(data, dict) else (data if isinstance(data, list) else [])
-        if not assets:
-            return False
-        asset = assets[0]
-        # Suche in mehreren möglichen Feldern
-        for field in ('tags', 'keywords', 'subject'):
-            val = asset.get(field)
-            if val:
-                # Vergleiche - mindestens eines unserer Keywords muss da sein
-                str_val = json.dumps(val).lower() if not isinstance(val, str) else val.lower()
-                if any(kw.lower() in str_val for kw in expected_keywords):
-                    return True
-        return False
-    except Exception as e:
-        logger.debug(f"  Verify-GET fehlgeschlagen: {e}")
-        return False
-
-
-def update_asset_after_upload(unique_id, filename, subfolder=None, filepath=None):
-    """
-    Nach erfolgreichem Insert in DAM:
-      1. Basis-Update (Titel, SKU, webEnabled) — OHNE Tags (verhindert "Workflow-Error")
-      2. Kategorie zuweisen
-      3. Keywords/Tags separat setzen (eigene API-Calls mit Format-Detection)
-
-    Wichtig: Tags müssen SEPARAT gesetzt werden! Wenn Tags inline mit webEnabled
-    kommen, triggert der DAM-Workflow einen "Workflow-Error".
-    """
-    try:
-        filename_no_ext = os.path.splitext(filename)[0]
-
-        # SKU aus Dateiname extrahieren (erste 7-8 Ziffern vor dem ersten _)
-        sku_match = re.match(r'^(\d{7,8})', filename_no_ext)
-        sku = sku_match.group(1) if sku_match else None
-
-        # ───── PHASE 1: Keywords aus dem Bild lesen ─────
-        image_keywords = []
-        if filepath and os.path.exists(filepath):
-            image_keywords = get_image_keywords(filepath)
-
-        # ───── PHASE 2: Basis-Update (KEINE Tags!) ─────
-        headers = get_dam_headers()
-        update_url = f"{DAM_API_BASE}/asset/update?unique_id={unique_id}"
-        data = {
-            "title": filename_no_ext,
-            "webEnabled": True,
-        }
-        if sku:
-            data["products"] = [
-                {"requestKey": sku, "title": filename_no_ext, "keyType": 100}
-            ]
-
-        resp = requests.put(update_url, headers=headers, json=data, timeout=30)
-        if resp.status_code in [200, 204]:
-            logger.info(f"  Metadaten: {filename_no_ext} | SKU={sku} | webEnabled=True ✓")
-        else:
-            logger.warning(f"  Metadaten-Update fehlgeschlagen {filename}: HTTP {resp.status_code} - {resp.text[:200]}")
-
-        # ───── PHASE 3: Kategorie zuweisen ─────
-        category_id = SUBFOLDER_TO_CATEGORY.get(subfolder) if subfolder else None
-        if not category_id and image_keywords:
-            for kw in image_keywords:
-                cat_id = KEYWORD_TO_CATEGORY_ID.get(kw)
-                if cat_id:
-                    logger.info(f"  EXIF-Keyword '{kw}' → Kategorie {cat_id}")
-                    category_id = cat_id
-                    break
-
-        if category_id:
-            # Input-LWDE-Kategorie entfernen
-            remove_url = f"{DAM_API_BASE}/asset/category/remove?unique_id={unique_id}&category_id={INPUT_LWDE_CATEGORY_ID}"
-            requests.put(remove_url, headers=get_dam_headers(), json={}, timeout=15)
-
-            # Korrekte Kategorie setzen
-            add_url = f"{DAM_API_BASE}/asset/category/add?unique_id={unique_id}&category_id={category_id}"
-            resp2 = requests.put(add_url, headers=get_dam_headers(), json={}, timeout=15)
-            if resp2.status_code in [200, 204]:
-                cat_src = subfolder if subfolder else 'EXIF'
-                logger.info(f"  Kategorie {category_id} gesetzt [{cat_src}] ✓")
+            url = f"{DAM_API_BASE}/asset/category/add?unique_id={unique_id}&category_id={cat_id}"
+            resp = requests.put(url, headers=headers, json={}, timeout=timeout)
+            if resp.status_code == 401:
+                invalidate_dam_token()
+                headers = get_dam_headers()
+                resp = requests.put(url, headers=headers, json={}, timeout=timeout)
+            if resp.status_code in (200, 204):
+                logger.info(f"  + Kategorie {cat_id} zugewiesen ({filename})")
             else:
-                logger.warning(f"  Kategorie-Update fehlgeschlagen: HTTP {resp2.status_code}")
-        else:
-            logger.warning(f"  Keine Kategorie erkannt für {filename} — bleibt in Input LWDE")
-
-        # ───── PHASE 4: Keywords/Tags separat setzen ─────
-        if image_keywords:
-            update_asset_keywords(unique_id, image_keywords, filename)
-
-    except Exception as e:
-        logger.error(f"  Fehler beim Asset-Update nach Upload {filename}: {e}")
-        import traceback
-        logger.debug(traceback.format_exc())
+                logger.warning(f"  Kategorie {cat_id} fehlgeschlagen ({filename}): HTTP {resp.status_code} - {resp.text[:150]}")
+        except Exception as e:
+            logger.warning(f"  Kategorie {cat_id} Exception ({filename}): {e}")
 
 
 # ============================================================
-# IMAGE RESIZING
+# IMAGE RESIZE (Metadaten-erhaltend!)
 # ============================================================
 
 def resize_image_to_1800(image_path):
-    """Resize image to max 1800x1800 pixels, maintaining aspect ratio."""
+    """
+    Resize auf max 1800x1800 (Aspect Ratio bleibt) MIT Metadaten-Erhalt.
+
+    Wichtig: PIL `Image.save()` strippt XMP/IPTC/EXIF wenn nicht explizit
+    durchgereicht. Wir sichern die Metadaten doppelt:
+      1. PIL kriegt exif/xmp/icc_profile aus img.info beim Speichern.
+      2. exiftool kopiert anschliessend ALLE Metadaten vom Original
+         in die resized Datei – als Sicherheitsnetz, falls PIL XMP/IPTC
+         nicht sauber durchgereicht hat.
+    """
     try:
-        img = Image.open(image_path)
+        with Image.open(image_path) as img:
+            w, h = img.size
+            if w <= 1800 and h <= 1800:
+                # Kein Resize noetig — Originaldatei bleibt unangetastet, Keywords drin
+                return True
 
-        # Get original dimensions
-        original_width, original_height = img.size
+            xmp_blob  = img.info.get('xmp')
+            exif_blob = img.info.get('exif')
+            icc_blob  = img.info.get('icc_profile')
 
-        # If already smaller than 1800x1800, don't resize
-        if original_width <= 1800 and original_height <= 1800:
-            return True
+            img.thumbnail((1800, 1800), Image.Resampling.LANCZOS)
 
-        # Calculate new dimensions maintaining aspect ratio
-        max_size = 1800
-        img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+            save_kwargs = {'quality': 95, 'optimize': True}
+            if exif_blob:
+                save_kwargs['exif'] = exif_blob
+            if xmp_blob:
+                save_kwargs['xmp'] = xmp_blob
+            if icc_blob:
+                save_kwargs['icc_profile'] = icc_blob
 
-        # Save resized image (overwrite original)
-        img.save(image_path, quality=95, optimize=True)
-        logger.info(f"Bild verkleinert: {image_path} ({original_width}x{original_height} → {img.size[0]}x{img.size[1]})")
+            tmp_path = image_path + '.resized.tmp'
+            img.save(tmp_path, **save_kwargs)
+            new_w, new_h = img.size
+
+        # Belt-and-suspenders: exiftool kopiert ALL metadata Original → resized
+        # (PIL ist bei XMP/IPTC inkonsistent, exiftool ist die Referenz)
+        try:
+            exiftool = find_exiftool()
+            if exiftool:
+                subprocess.run(
+                    [exiftool, '-overwrite_original',
+                     '-TagsFromFile', image_path,
+                     '-XMP:all', '-IPTC:all', '-EXIF:all',
+                     tmp_path],
+                    capture_output=True, timeout=15
+                )
+        except Exception as e:
+            logger.debug(f"  exiftool metadata-copy fehlgeschlagen: {e}")
+
+        os.replace(tmp_path, image_path)
+        logger.info(f"  Resize: {os.path.basename(image_path)} ({w}x{h} → {new_w}x{new_h}) — Metadaten erhalten")
         return True
     except Exception as e:
-        logger.error(f"Image-Resizing-Fehler {image_path}: {e}")
+        logger.error(f"Image-Resize-Fehler {image_path}: {e}")
+        # Tmp aufraeumen falls vorhanden
+        try:
+            tmp = image_path + '.resized.tmp'
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+        except Exception:
+            pass
         return False
 
 
@@ -443,7 +274,7 @@ def resize_image_to_1800(image_path):
 # ============================================================
 
 def upload_to_sftp(local_path, sftp_filename):
-    """Upload file to SFTP server."""
+    """Datei zum Cliplister-SFTP hochladen."""
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -466,109 +297,121 @@ def upload_to_sftp(local_path, sftp_filename):
 
 
 # ============================================================
-# BILDER INS DAM HOCHLADEN (via SFTP-URL)
+# DAM DUPLIKAT-CHECK (Port aus altem Skript)
 # ============================================================
 
-def _parse_sku_and_position(filename):
+def get_existing_dam_filenames(category_id=DEFAULT_CATEGORY_ID):
     """
-    Parsed Filename `{SKU}_{position}.{ext}` → (sku, position).
-    z.B. '10048975_1.jpg' → ('10048975', 1)
-         '10048975_2_unique123.jpg' → ('10048975', 2)
-    Returns (None, None) wenn nicht parsbar.
+    Liefert ein Set aller Dateinamen, die bereits im DAM unter category_id liegen.
+    Verhindert Doppel-Uploads.
     """
-    name_no_ext = os.path.splitext(filename)[0]
-    # Match: SKU (7-8 digits) _ position (1-2 digits)
-    m = re.match(r'^(\d{7,8})_(\d{1,2})(?:[_#].*)?$', name_no_ext)
-    if m:
-        return m.group(1), int(m.group(2))
-    # Fallback: nur SKU
-    m2 = re.match(r'^(\d{7,8})', name_no_ext)
-    if m2:
-        return m2.group(1), None
-    return None, None
+    existing = set()
+    headers = get_dam_headers()
+    offset = 0
+    timeout = config.get('API_REQUEST_TIMEOUT', 120)
+    try:
+        while True:
+            params = {
+                "category_id": category_id,
+                "limit": 250,
+                "offset": offset,
+                "include_meta": "true",
+            }
+            resp = requests.get(DAM_ASSET_LIST, headers=headers, params=params, timeout=timeout)
+            if resp.status_code == 401:
+                invalidate_dam_token()
+                headers = get_dam_headers()
+                resp = requests.get(DAM_ASSET_LIST, headers=headers, params=params, timeout=timeout)
+            if resp.status_code != 200:
+                logger.warning(f"DAM-Listenabfrage Fehler: HTTP {resp.status_code}")
+                break
+            data = resp.json()
+            assets = data.get('assets', data) if isinstance(data, dict) else data
+            if not assets:
+                break
+            for asset in assets:
+                title = asset.get('title') or asset.get('fileName') or ''
+                if title:
+                    existing.add(title)
+                    existing.add(os.path.splitext(title)[0])
+            if len(assets) < 250:
+                break
+            offset += 250
+        logger.info(f"DAM: {len(existing)} bestehende Eintraege geladen (Duplikat-Check)")
+    except Exception as e:
+        logger.warning(f"Fehler beim DAM-Duplikat-Check: {e} — fahre ohne Check fort")
+    return existing
 
 
-def upload_single_image(filepath, default_category_id, subfolder=None):
+# ============================================================
+# UPLOAD EIN BILD INS DAM
+# ============================================================
+
+def upload_single_image(filepath):
     """
-    Upload image to SFTP, then register with DAM.
-
-    Workflow (wie altes Skript + Position/Keywords nachträglich):
-    1. Insert MINIMAL (source, fileName, categories) - wie altes Skript
-    2. NACH Insert: products mit position setzen (für SKU+Position-Referenz im DAM)
-    3. NACH Insert: tags setzen (Keywords aus Lightroom-Export)
-
-    Wichtig: KEIN webEnabled - triggert sonst "Worflow-Error" im DAM!
+    Upload (so wie altes Skript): MINIMAL Insert.
+    DAM extrahiert Keywords + SKU/Position automatisch aus dem Bild + Filename.
     """
     filename = os.path.basename(filepath)
     try:
-        # Step 0: Resize image to max 1800x1800 (Resize behält EXIF/XMP/IPTC)
+        # 1) Resize (Metadaten bleiben dank exiftool-Copy erhalten)
         resize_image_to_1800(filepath)
 
-        # Step 1: SKU + Position aus Filename
+        # 2) Diagnostisches Logging: Keywords + SKU/Position
         sku, position = _parse_sku_and_position(filename)
+        keywords = get_image_keywords(filepath)
+        if keywords:
+            logger.info(f"  📌 Keywords ({filename}): {keywords}")
+        else:
+            logger.warning(f"  ⚪ KEINE Keywords im Bild gefunden ({filename}) — DAM kann nichts extrahieren!")
+        if sku is not None:
+            pos_log = f", Pos {position}" if position is not None else ""
+            logger.info(f"  Filename codiert: SKU {sku}{pos_log}")
 
-        # Step 2: Keywords aus Bild lesen (Lightroom-Export, exiftool-Set)
-        image_keywords = get_image_keywords(filepath)
-
-        # Step 3: Korrekte Kategorie bestimmen
-        # Priority: Subfolder-Mapping > EXIF-Keywords > default
-        category_id = SUBFOLDER_TO_CATEGORY.get(subfolder) if subfolder else None
-        if not category_id and image_keywords:
-            for kw in image_keywords:
-                cat_id = KEYWORD_TO_CATEGORY_ID.get(kw)
-                if cat_id:
-                    logger.info(f"  EXIF-Keyword '{kw}' → Kategorie {cat_id}")
-                    category_id = cat_id
-                    break
-        if not category_id:
-            category_id = default_category_id
-
-        # Step 4: Upload to SFTP
+        # 3) SFTP-Upload
         if not upload_to_sftp(filepath, filename):
             logger.warning(f"  SFTP-Upload fehlgeschlagen: {filename}")
             return False
 
-        # Step 5: Construct HTTPS URL for DAM API
-        sftp_url = f"https://clup01.cliplister.com/files/{config['SFTP_USERNAME']}{config['SFTP_REMOTE_DIR']}/{filename}".replace('\\', '/')
+        # 4) DAM-Insert (minimal, exakt wie altes Skript)
+        sftp_url = (
+            f"https://clup01.cliplister.com/files/"
+            f"{config['SFTP_USERNAME']}{config['SFTP_REMOTE_DIR']}/{filename}"
+        ).replace('\\', '/')
 
-        # Step 6: MINIMAL Insert (wie altes funktionierendes Skript!)
-        # Das DAM extrahiert Keywords/Title automatisch aus dem Bild
-        headers = get_dam_headers()
         payload = {
             "source": sftp_url,
             "fileName": filename,
-            "categories": [{"id": category_id}],
+            "categories": [{"id": DEFAULT_CATEGORY_ID}],
         }
 
-        response = requests.put(DAM_ASSET_INSERT, headers=headers, json=payload, timeout=30)
+        headers = get_dam_headers()
+        timeout = config.get('API_REQUEST_TIMEOUT', 120)
+        response = requests.put(DAM_ASSET_INSERT, headers=headers, json=payload, timeout=timeout)
 
         # Token-Refresh on 401
         if response.status_code == 401:
             logger.warning("Token abgelaufen, erneuere...")
             invalidate_dam_token()
             headers = get_dam_headers()
-            response = requests.put(DAM_ASSET_INSERT, headers=headers, json=payload, timeout=30)
+            response = requests.put(DAM_ASSET_INSERT, headers=headers, json=payload, timeout=timeout)
 
-        if response.status_code in [200, 201]:
-            result = response.json() if response.text else {}
-            unique_id = result.get('uniqueId', '') or result.get('unique_id', '')
-            logger.info(f"  Upload OK: {filename} | Kategorie {category_id} ✓")
+        if response.status_code in (200, 201):
+            # unique_id aus Insert-Response holen fuer Post-Insert Kategorisierung
+            unique_id = ''
+            try:
+                result = response.json() if response.text else {}
+                unique_id = result.get('uniqueId') or result.get('unique_id') or ''
+            except Exception:
+                pass
+            logger.info(f"  ✓ Upload OK: {filename}")
 
-            # Step 7: Nach erfolgreichem Insert - Position + Keywords NACHRÜSTEN
-            if unique_id:
-                # 7a) Products/Position (SKU-Verknüpfung mit Position)
-                if sku and position is not None:
-                    _set_asset_product(unique_id, sku, position, filename, filepath)
-                elif sku:
-                    _set_asset_product(unique_id, sku, None, filename, filepath)
-
-                # 7b) Tags (Keywords) falls vorhanden und vom DAM nicht auto-extrahiert
-                if image_keywords:
-                    if not _verify_keywords_saved(unique_id, image_keywords):
-                        logger.info(f"  ⚠ DAM hat Keywords nicht auto-extrahiert - setze separat...")
-                        update_asset_keywords(unique_id, image_keywords, filename)
-                    else:
-                        logger.info(f"  ✓ DAM hat Keywords automatisch extrahiert: {image_keywords}")
+            # Spezifische Kategorie zuweisen (Mood, Clipping, Detail etc.)
+            # via asset/category/add — wie altes 02-1_filenaming.py Phase 2
+            if unique_id and keywords:
+                _assign_categories_from_keywords(unique_id, keywords, filename)
+            elif not unique_id:
+                logger.warning(f"  Keine unique_id in Insert-Response ({filename}) — Kategorie nicht zuweisbar")
             return True
         else:
             logger.warning(f"  FEHLER: {filename}: HTTP {response.status_code} - {response.text[:200]}")
@@ -582,86 +425,63 @@ def upload_single_image(filepath, default_category_id, subfolder=None):
         return False
 
 
-def _set_asset_product(unique_id, sku, position, filename, filepath=None):
-    """
-    Setzt Product-Verknüpfung (SKU + Position) am DAM-Asset.
-    Dies stellt die Referenz "Asset gehört zu Artikel SKU an Position N" her.
-    """
-    try:
-        filename_no_ext = os.path.splitext(filename)[0]
-        product = {"requestKey": sku, "title": filename_no_ext, "keyType": 100}
-        if position is not None:
-            product["position"] = position
+# ============================================================
+# UPLOAD ALL
+# ============================================================
 
-        # Try update via asset/update with products array
-        update_url = f"{DAM_API_BASE}/asset/update?unique_id={unique_id}"
-        resp = requests.put(
-            update_url,
-            headers=get_dam_headers(),
-            json={"products": [product]},
-            timeout=30
-        )
-        if resp.status_code in [200, 204]:
-            pos_log = f" Pos {position}" if position is not None else ""
-            logger.info(f"  ✓ Position: SKU {sku}{pos_log} → {filename}")
-            return True
-        else:
-            logger.debug(f"  products inline failed HTTP {resp.status_code}: {resp.text[:150]}")
-
-        # Fallback: dedicated product/add endpoint
-        try:
-            product_add_url = f"{DAM_API_BASE}/asset/product/add?unique_id={unique_id}&request_key={sku}"
-            if position is not None:
-                product_add_url += f"&position={position}"
-            resp2 = requests.put(product_add_url, headers=get_dam_headers(), json={}, timeout=15)
-            if resp2.status_code in [200, 204]:
-                pos_log = f" Pos {position}" if position is not None else ""
-                logger.info(f"  ✓ Position via /product/add: SKU {sku}{pos_log}")
-                return True
-            else:
-                logger.warning(f"  Position-Update fehlgeschlagen: HTTP {resp2.status_code}")
-        except Exception as e:
-            logger.debug(f"  /product/add Exception: {e}")
-    except Exception as e:
-        logger.warning(f"  Fehler beim Position-Setzen für {filename}: {e}")
-    return False
+IMG_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.gif', '.webp')
 
 
-def upload_all_images(category_id):
-    """Upload all images from 03-Upload to DAM.
-    Subfolder name (e.g. B20-Clipping) is passed to upload_single_image
-    so it can set the correct DAM category and remove 'Input LWDE'."""
+def _collect_image_files(folder):
+    """Sammelt rekursiv alle Bilder unterhalb von folder."""
+    image_files = []
+    for root, _, filenames in os.walk(folder):
+        for f in filenames:
+            if f.startswith('.'):
+                continue
+            if f.lower().endswith(IMG_EXTENSIONS):
+                image_files.append(os.path.join(root, f))
+    return image_files
+
+
+def upload_all_images():
+    """Upload aller Bilder aus 03-Upload ins DAM. Ueberspringt bereits vorhandene."""
     if not os.path.exists(upload_folder):
         logger.warning(f"Upload-Ordner nicht gefunden: {upload_folder}")
         return 0
 
-    # Collect (filepath, subfolder_name) pairs
-    file_pairs = []
-    for root, dirs, filenames in os.walk(upload_folder):
-        subfolder = os.path.basename(root)
-        # Only treat it as a known subfolder if it's in our mapping
-        known_subfolder = subfolder if subfolder in SUBFOLDER_TO_CATEGORY else None
-        for f in filenames:
-            if f.startswith('.'):
-                continue
-            if f.lower().endswith(('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.gif', '.webp')):
-                file_pairs.append((os.path.join(root, f), known_subfolder))
-
-    if not file_pairs:
+    image_files = _collect_image_files(upload_folder)
+    if not image_files:
         logger.info("Keine Bilder zum Hochladen gefunden")
         return 0
 
-    logger.info(f"{len(file_pairs)} Bilder gefunden, starte Upload...")
+    # Duplikat-Check ein einziges Mal vorab
+    existing = get_existing_dam_filenames(DEFAULT_CATEGORY_ID)
+    to_upload = []
+    skipped = 0
+    for fp in image_files:
+        base = os.path.basename(fp)
+        base_no_ext = os.path.splitext(base)[0]
+        if base in existing or base_no_ext in existing:
+            logger.info(f"Übersprungen (bereits im DAM): {base}")
+            skipped += 1
+        else:
+            to_upload.append(fp)
+
+    if skipped:
+        logger.info(f"{skipped} bereits vorhandene Assets übersprungen")
+
+    if not to_upload:
+        return 0
+
+    logger.info(f"{len(to_upload)} Bilder werden hochgeladen...")
 
     uploaded = 0
-    total = len(file_pairs)
-    concurrency = min(config.get('ASYNC_TASK_CONCURRENCY', 4), 4)  # capped at 4 to avoid rate limits
+    total = len(to_upload)
+    concurrency = min(config.get('ASYNC_TASK_CONCURRENCY', 4), 4)
 
     with ThreadPoolExecutor(max_workers=concurrency) as executor:
-        futures = {
-            executor.submit(upload_single_image, fp, category_id, subfolder): fp
-            for fp, subfolder in file_pairs
-        }
+        futures = {executor.submit(upload_single_image, fp): fp for fp in to_upload}
         for future in as_completed(futures):
             try:
                 if future.result():
@@ -682,7 +502,7 @@ def upload_all_images(category_id):
 # ============================================================
 
 def cleanup_after_upload():
-    """Clean up local Upload folder after DAM upload."""
+    """Lokalen 03-Upload Ordner leeren nach erfolgreichem Upload."""
     cleaned = 0
     if os.path.exists(upload_folder):
         for item in os.listdir(upload_folder):
@@ -697,7 +517,6 @@ def cleanup_after_upload():
                 cleaned += 1
             except Exception as e:
                 logger.warning(f"Cleanup-Fehler {item}: {e}")
-
     logger.info(f"Cleanup: {cleaned} Objekte aus Upload-Ordner entfernt")
 
 
@@ -711,46 +530,31 @@ if __name__ == "__main__":
         logger.info("Upload ins DAM gestartet")
         logger.info("=" * 70)
 
-        # Ticket-Key aus Input lesen (optional, fuer Logging)
+        # Ticket-Key (optional, fuer Logging)
         ticket_key = os.environ.get("POSTPRO_INPUT", "").strip()
-
         if not ticket_key:
             ticket_file = os.path.join(upload_folder, ".ticket_key")
             if os.path.exists(ticket_file):
                 with open(ticket_file, 'r') as f:
                     ticket_key = f.read().strip()
-
-        # Prefix sicherstellen
         if ticket_key and '-' not in ticket_key:
             ticket_key = f"CREAMEDIA-{ticket_key}"
-
         if ticket_key:
             logger.info(f"Ticket: {ticket_key}")
 
-        logger.info(f"Default-Kategorie: ID {DEFAULT_CATEGORY_ID} (wie altes Skript - DAM extrahiert Keywords automatisch)")
+        logger.info(f"Default-Kategorie: ID {DEFAULT_CATEGORY_ID} (DAM extrahiert Keywords + Position automatisch)")
 
-        # Pruefen ob Bilder im Upload-Ordner liegen (REKURSIV - inkl. Unterordner!)
-        # Bilder können nach 02-1_filenaming.py in Unterordnern liegen (B20-Clipping, A10-Mood, etc.)
         if not os.path.exists(upload_folder):
             logger.error(f"Upload-Ordner existiert nicht: {upload_folder}")
             sys.exit(1)
 
-        image_files = []
-        IMG_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.gif', '.webp')
-        for root, dirs, filenames in os.walk(upload_folder):
-            for f in filenames:
-                if f.startswith('.'):
-                    continue
-                if f.lower().endswith(IMG_EXTENSIONS):
-                    image_files.append(os.path.join(root, f))
-
+        image_files = _collect_image_files(upload_folder)
         if not image_files:
             logger.error("Keine Bilder im Upload-Ordner gefunden!")
             logger.error(f"Ordner: {upload_folder}")
-            logger.error("Tipp: Bilder müssen in 03-Upload (oder Unterordnern wie B20-Clipping) liegen")
             sys.exit(1)
 
-        # Zeige Zusammenfassung: wie viele Bilder, in welchen Ordnern
+        # Übersicht
         folder_counts = {}
         for fp in image_files:
             folder = os.path.basename(os.path.dirname(fp))
@@ -760,11 +564,7 @@ if __name__ == "__main__":
 
         # Upload
         logger.info("Bilder ins DAM hochladen...")
-        uploaded = upload_all_images(DEFAULT_CATEGORY_ID)
-
-        if uploaded == 0:
-            logger.error("Keine Bilder konnten hochgeladen werden!")
-            sys.exit(1)
+        uploaded = upload_all_images()
 
         # Cleanup
         logger.info("Aufraeumen...")
@@ -775,8 +575,7 @@ if __name__ == "__main__":
             logger.info(f"✓ ERFOLG: {uploaded} Bilder hochgeladen")
         else:
             failed = len(image_files) - uploaded
-            logger.warning(f"⚠ TEILWEISE: {uploaded}/{len(image_files)} erfolgreich, {failed} fehlgeschlagen")
-        logger.info(f"Default-Kategorie: ID {DEFAULT_CATEGORY_ID} (wie altes Skript - DAM extrahiert Keywords automatisch)")
+            logger.warning(f"⚠ TEILWEISE: {uploaded}/{len(image_files)} erfolgreich, {failed} fehlgeschlagen oder uebersprungen")
         if ticket_key:
             logger.info(f"Ticket: {ticket_key}")
         logger.info("=" * 70)

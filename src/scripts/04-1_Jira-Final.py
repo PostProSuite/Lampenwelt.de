@@ -1,16 +1,17 @@
 """
 04 Ticket abschliessen
 =====================
-Nimmt die bereits klassifizierten Bilder aus 01-Input RAW files
-(Unterordner wie A10-Mood, B20-Clipping, etc.) und:
+Nimmt die bereits klassifizierten Bilder aus 02-Webcheck und:
 
-1) Benennt Dateien fuer Webshop um:  {SKU}_{Suffix}.jpg  (z.B. 8505786_A10.jpg)
-2) Setzt Keywords per exiftool basierend auf Ordnernamen
-3) Erstellt Excel-Report mit Bildmetadaten
-4) Aktualisiert Jira-Ticket (Bildcount, Zuweisung an Reporter, Transition QA)
-5) Kopiert alle umbenannten Bilder nach 03-Upload (fuer DAM-Upload)
-6) Speichert Ticket-Key fuer Upload-Script
-7) Raeumt 01-Input und 02-Webcheck auf
+1) Benennt Dateien fuer Webshop um:  {SKU}_{Position}.ext  (z.B. 8505786_1.jpg)
+   WICHTIG: Keywords werden NICHT modifiziert. Lightroom/Image-Classification
+   hat die Keywords bereits korrekt gesetzt – die werden 1:1 uebernommen.
+2) Erstellt Excel-Report mit Bildmetadaten
+3) Aktualisiert Jira-Ticket (Bildcount, Zuweisung an Reporter, Transition QA,
+   Kommentar "Upload done 🚀" als aktueller Bearbeiter)
+4) Kopiert alle umbenannten Bilder nach 03-Upload (fuer DAM-Upload)
+5) Speichert Ticket-Key fuer Upload-Script
+6) Raeumt 01-Input und 02-Webcheck auf
 """
 
 import os
@@ -238,19 +239,21 @@ def _collect_folder_files(base_path):
 
 def process_and_rename_files():
     """
-    Benennt alle Bilder in 02-Webcheck nach dem Positions-Schema um
-    und setzt Keywords per exiftool:
+    Benennt alle Bilder in 02-Webcheck nach dem Positions-Schema um:
 
-      B20-Clipping  →  {SKU}_1.ext          (Mainimage, max 1)
-      A10-Mood      →  {SKU}_2.ext, _3.ext  (Mood, max 2)
-      Alle anderen  →  {SKU}_4.ext, _5, ... (Pos 4-x, ordnernumsgreifend pro SKU)
+      01-Mainimage  →  {SKU}_1.ext          (Mainimage, max 1)
+      02-Mood       →  {SKU}_2.ext, _3.ext  (Mood, max 2)
+      03-Pos4-X     →  {SKU}_4.ext, _5, ... (Pos 4-x, fortlaufend pro SKU)
+
+    KEINE Keyword-Modifikation: Lightroom/Image-Classification haben die
+    Keywords bereits korrekt geschrieben - die bleiben unangetastet.
     """
-    logger.info("Phase 1: Dateien umbenennen und Keywords setzen...")
+    logger.info("Phase 1: Dateien umbenennen (Keywords bleiben unveraendert)...")
     renamed = 0
 
     folder_files = _collect_folder_files(webcheck_path)
 
-    # ── Pass 1: Mainimage (B20-Clipping) → _1 ──────────────────
+    # ── Pass 1: Mainimage (01-Mainimage) → _1 ──────────────────
     sku_clip_count = {}
     for root, filename in folder_files.get(MAINIMAGE_FOLDER, []):
         sku_match = pattern.search(filename)
@@ -264,10 +267,9 @@ def process_and_rename_files():
         ext = os.path.splitext(filename)[1]
         new_path = _do_rename(root, filename, f"{sku}_{MAINIMAGE_POS}{ext}")
         if new_path:
-            _set_keywords(new_path, FOLDER_KEYWORD_MAP.get(MAINIMAGE_FOLDER, []))
             renamed += 1
 
-    # ── Pass 2: Mood (A10-Mood) → _2, _3 ──────────────────────
+    # ── Pass 2: Mood (02-Mood) → _2, _3 ────────────────────────
     sku_mood_count = {}
     for root, filename in folder_files.get(MOOD_FOLDER, []):
         sku_match = pattern.search(filename)
@@ -282,16 +284,14 @@ def process_and_rename_files():
         ext = os.path.splitext(filename)[1]
         new_path = _do_rename(root, filename, f"{sku}_{pos}{ext}")
         if new_path:
-            _set_keywords(new_path, FOLDER_KEYWORD_MAP.get(MOOD_FOLDER, []))
             renamed += 1
 
-    # ── Pass 3: Alle anderen Ordner → _4, _5, _6 … ───────────
+    # ── Pass 3: Alle anderen Ordner → _4, _5, _6 … ────────────
     # Ordner alphabetisch sortieren fuer reproduzierbare Reihenfolge
     sku_other_count = {}
     for folder_name in sorted(folder_files.keys()):
         if folder_name in (MAINIMAGE_FOLDER, MOOD_FOLDER):
             continue
-        keywords = FOLDER_KEYWORD_MAP.get(folder_name, [])
         for root, filename in folder_files[folder_name]:
             sku_match = pattern.search(filename)
             if not sku_match:
@@ -302,11 +302,9 @@ def process_and_rename_files():
             ext = os.path.splitext(filename)[1]
             new_path = _do_rename(root, filename, f"{sku}_{pos}{ext}")
             if new_path:
-                if keywords:
-                    _set_keywords(new_path, keywords)
                 renamed += 1
 
-    logger.info(f"Phase 1: {renamed} Dateien umbenannt")
+    logger.info(f"Phase 1: {renamed} Dateien umbenannt (Keywords aus Lightroom uebernommen)")
     return True
 
 
@@ -494,7 +492,8 @@ def update_jira_ticket(ticket_key, image_count, article_count):
     - customfield_10303 = Bildanzahl
     - customfield_10299 = Artikelanzahl
     - Assignee = Reporter (Ticket-Ersteller)
-    - Kommentar mit @Mention (Jira Cloud Format)
+    - Kommentar "Upload done 🚀" - Autor ist automatisch der aktuell
+      authentifizierte User (JIRA_EMAIL aus config.env)
     - Transition auf 'QA'
     """
     try:
@@ -504,10 +503,10 @@ def update_jira_ticket(ticket_key, image_count, article_count):
 
         issue = jira.issue(ticket_key)
 
-        # Reporter auslesen
+        # Reporter auslesen (nur fuer Assignee, nicht fuer Mention)
         reporter = issue.fields.reporter
         if not reporter:
-            logger.warning(f"Kein Reporter für {ticket_key} - überspringe Mention/Assign")
+            logger.warning(f"Kein Reporter für {ticket_key} - überspringe Assign")
             reporter_id = None
             reporter_name = None
         else:
@@ -529,30 +528,13 @@ def update_jira_ticket(ticket_key, image_count, article_count):
         except Exception as e:
             logger.warning(f"Issue-Update teilweise fehlgeschlagen: {e}")
 
-        # Kommentar posten - mehrere Mention-Formate ausprobieren (Jira Cloud kompatibel)
-        comment_posted = False
-        if reporter_id:
-            mention_formats = [
-                f"[~accountid:{reporter_id}] Upload Done 🦄",  # Jira Cloud aktuell
-                f"[~{reporter_id}] Upload Done 🦄",            # Alte Form (jira-server / lokal)
-            ]
-            for comment in mention_formats:
-                try:
-                    jira.add_comment(ticket_key, comment)
-                    logger.info(f"Kommentar gepostet: {comment}")
-                    comment_posted = True
-                    break
-                except Exception as e:
-                    logger.debug(f"Kommentar-Format fehlgeschlagen ({comment[:30]}...): {e}")
-
-        if not comment_posted:
-            # Fallback: einfacher Kommentar ohne Mention
-            try:
-                fallback = f"Upload Done 🦄 ({image_count} Bilder, {article_count} Artikel)"
-                jira.add_comment(ticket_key, fallback)
-                logger.info(f"Fallback-Kommentar gepostet (ohne Mention): {fallback}")
-            except Exception as e:
-                logger.warning(f"Auch Fallback-Kommentar fehlgeschlagen: {e}")
+        # Kommentar posten - Autor wird automatisch der aktuelle User
+        # (JIRA_EMAIL aus config.env, also der der die App gerade benutzt)
+        try:
+            jira.add_comment(ticket_key, "Upload done 🚀")
+            logger.info(f"Kommentar gepostet als {jira_email}: 'Upload done 🚀'")
+        except Exception as e:
+            logger.warning(f"Kommentar fehlgeschlagen: {e}")
 
         # Transition zu QA
         try:
