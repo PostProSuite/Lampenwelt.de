@@ -1,6 +1,6 @@
 {
-  "version": "1.2.39",
-  "generated": "2026-05-05T08:50:57.301Z",
+  "version": "1.2.40",
+  "generated": "2026-05-05T09:04:26.840Z",
   "description": "Manifest for delta-update system - used by script-updater.js",
   "files": {
     "src/scripts/00-SKU-based-json-2.py": {
