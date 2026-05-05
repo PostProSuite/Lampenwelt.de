@@ -35,7 +35,7 @@ import paramiko
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from PIL import Image
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.append(os.path.dirname(__file__))
 from _utils import (
     load_config, setup_logging, get_paths,
     get_dam_token, invalidate_dam_token, find_exiftool,

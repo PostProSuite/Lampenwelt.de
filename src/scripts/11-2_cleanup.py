@@ -13,7 +13,7 @@ import sys
 import shutil
 import logging
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.append(os.path.dirname(__file__))
 from _utils import load_config, setup_logging, get_paths
 
 # ============================================================

@@ -23,7 +23,7 @@ import requests
 import concurrent.futures
 from collections import defaultdict
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from _utils import load_config, setup_logging, get_dam_token, invalidate_dam_token
 
 config = load_config()
