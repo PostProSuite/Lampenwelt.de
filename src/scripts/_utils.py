@@ -23,18 +23,35 @@ from dotenv import load_dotenv
 # ============================================================
 
 def load_config():
-    """Load configuration from .env file"""
+    """
+    Load configuration from .env file.
+
+    Suchreihenfolge (erste gefundene gewinnt):
+      1. <script_dir>/config/config.env   — direkt neben dem laufenden Skript
+      2. <script_dir>/config.env          — direkt neben dem laufenden Skript
+      3. $POSTPRO_BUNDLED_SCRIPTS/config/config.env  — App-Bundle (fuer Script-Updater
+         der die Python-Skripte in einen overrides-Ordner kopiert ohne config.env)
+      4. $POSTPRO_BUNDLED_SCRIPTS/config.env
+    """
     script_dir = os.path.dirname(__file__)
-    # Suche config.env: zuerst config/config.env, dann direkt im Skriptordner
-    env_file = os.path.join(script_dir, "config", "config.env")
-    if not os.path.exists(env_file):
-        env_file = os.path.join(script_dir, "config.env")
-    if not os.path.exists(env_file):
+    bundled_dir = os.environ.get('POSTPRO_BUNDLED_SCRIPTS', '')
+
+    candidates = [
+        os.path.join(script_dir, "config", "config.env"),
+        os.path.join(script_dir, "config.env"),
+    ]
+    if bundled_dir:
+        candidates.append(os.path.join(bundled_dir, "config", "config.env"))
+        candidates.append(os.path.join(bundled_dir, "config.env"))
+
+    env_file = next((p for p in candidates if os.path.exists(p)), None)
+    if not env_file:
+        searched = "\n  - ".join(candidates)
         raise FileNotFoundError(
             f"config.env nicht gefunden!\n"
-            f"Erwartet unter: {os.path.join(script_dir, 'config', 'config.env')}\n"
-            f"oder direkt in: {script_dir}\n"
-            f"Bitte config.env dort ablegen und Zugangsdaten eintragen."
+            f"Gesucht in:\n  - {searched}\n"
+            f"Bitte config.env unter <App>/Contents/Resources/app.asar.unpacked/src/scripts/config/ "
+            f"oder im Override-Ordner ablegen."
         )
     load_dotenv(env_file)
     return {
