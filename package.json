@@ -9,9 +9,10 @@
     "dev": "electron .",
     "manifest": "node generate-scripts-manifest.js",
     "build": "npm run manifest && rm -rf dist && electron-builder && bash scripts/remove-codesign.sh",
+    "build-publish": "npm run manifest && rm -rf dist && electron-builder --publish always && bash scripts/remove-codesign.sh",
     "delta": "node build-delta-updates.js",
     "build-release": "npm run build && npm run delta",
-    "release": "npm run build-release -- --publish always",
+    "release": "npm run build-publish && npm run delta && gh release upload v$npm_package_version dist/latest-mac.yml --clobber --repo PostProSuite/Lampenwelt.de",
     "postrelease": "rm -rf dist node_modules && gh release list --repo PostProSuite/Lampenwelt.de --limit 50 --json tagName --jq '.[1:][].tagName' | xargs -I{} gh release delete {} --repo PostProSuite/Lampenwelt.de --yes --cleanup-tag"
   },
   "repository": {
