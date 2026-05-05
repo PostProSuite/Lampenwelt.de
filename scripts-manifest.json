@@ -1,6 +1,6 @@
 {
-  "version": "1.2.38",
-  "generated": "2026-04-29T10:32:16.614Z",
+  "version": "1.2.39",
+  "generated": "2026-05-05T08:50:57.301Z",
   "description": "Manifest for delta-update system - used by script-updater.js",
   "files": {
     "src/scripts/00-SKU-based-json-2.py": {
@@ -9,9 +9,9 @@
       "mtime": "2026-04-29T05:34:35.528Z"
     },
     "src/scripts/02-1_filenaming.py": {
-      "sha256": "4b3d6ca20b4c4afda649e46b2ef08a942c466f1af9d77f6ef7491a0dd3232656",
-      "size": 23624,
-      "mtime": "2026-04-29T05:36:16.145Z"
+      "sha256": "b6d336b27a0010f13a430b5e1829b14b99e99cba67a2ababc5e287395a979e4c",
+      "size": 27604,
+      "mtime": "2026-04-30T09:17:51.171Z"
     },
     "src/scripts/03-1_DAM-API-Request-Download.py": {
       "sha256": "a56309488859f2858c78111613076eb86a1dfd365b34a741e45e82e3d191dd72",
@@ -19,9 +19,9 @@
       "mtime": "2026-04-29T05:34:49.434Z"
     },
     "src/scripts/04-1_Jira-Final.py": {
-      "sha256": "42566fb22a4ba31b238fea1f9c2f1f1e80b72f9f3d679a0c4875a0ece80691d6",
-      "size": 27378,
-      "mtime": "2026-04-29T05:55:46.812Z"
+      "sha256": "e1e0daa1760d141541abd22f5804b0c37545c67a14fbe8407f157f8d0272ceb6",
+      "size": 26617,
+      "mtime": "2026-04-30T09:34:52.225Z"
     },
     "src/scripts/06-X-Artikel.py": {
       "sha256": "8ba9895d23993ed731bc138f6e1e9c18a741155ad85a3a0d42d0e7a9dbcc4c84",
@@ -29,9 +29,9 @@
       "mtime": "2026-04-22T09:19:32.984Z"
     },
     "src/scripts/10-2_Upload-DAM-Direct.py": {
-      "sha256": "468104c9e3c5b8dacb54c0d31f8e97f0aa333ddc0a7a55104d278515e9aaaf3b",
-      "size": 32380,
-      "mtime": "2026-04-29T05:39:35.594Z"
+      "sha256": "167b1c9938e52e46607b6cd4eed4ec41ff3179bd7769a19e8d699b5af8cb0eee",
+      "size": 22265,
+      "mtime": "2026-05-01T06:26:51.053Z"
     },
     "src/scripts/11-1_webenabled-nein.py": {
       "sha256": "0b89f3bbdd558cc9698f26c1b0d5ebe0a3c4cee92fddbf7ebe0b5cb345dca63e",
@@ -54,9 +54,9 @@
       "mtime": "2026-04-23T20:51:36.745Z"
     },
     "src/scripts/_utils.py": {
-      "sha256": "66f50cf199712006f81e074c0ed4da7c2d23d2e805c22f66d44e5b90a8fd7279",
-      "size": 24228,
-      "mtime": "2026-04-29T05:34:17.358Z"
+      "sha256": "bc1e3ee9143fe79e69d1e0792578b67d3acc00d405dbb85899424ec7160df401",
+      "size": 24881,
+      "mtime": "2026-05-05T08:45:08.009Z"
     },
     "src/scripts/setup_python_env.py": {
       "sha256": "36293e4d038c16d2c5c17721be2792cd17a909169cfae70e3805b9dc3f0279c7",
