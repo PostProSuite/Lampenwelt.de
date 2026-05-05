@@ -156,7 +156,7 @@ def _parse_sku_and_position(filename):
     return None, None
 
 
-def _assign_categories_from_keywords(unique_id, keywords, filename):
+def _assign_categories_from_keywords(unique_id, keywords, filename, max_retries=4):
     """
     Weist dem DAM-Asset zusaetzliche Kategorien zu, abhaengig von den Bild-Keywords.
 
@@ -167,6 +167,10 @@ def _assign_categories_from_keywords(unique_id, keywords, filename):
 
     Mehrere Keywords koennen mehrere Kategorien zuweisen
     (z.B. ['Detail', 'Shade'] → 408721 + 408753).
+
+    RETRY-LOGIK: Direkt nach Insert ist das Asset im DAM oft noch nicht
+    indexiert → `category/add` liefert dann HTTP 400 "asset cannot be found".
+    Wir warten und probieren erneut (exponential backoff).
     """
     if not unique_id or not keywords:
         return
@@ -184,19 +188,29 @@ def _assign_categories_from_keywords(unique_id, keywords, filename):
     headers = get_dam_headers()
     timeout = config.get('API_REQUEST_TIMEOUT', 120)
     for cat_id in cat_ids:
-        try:
-            url = f"{DAM_API_BASE}/asset/category/add?unique_id={unique_id}&category_id={cat_id}"
-            resp = requests.put(url, headers=headers, json={}, timeout=timeout)
-            if resp.status_code == 401:
-                invalidate_dam_token()
-                headers = get_dam_headers()
+        for attempt in range(max_retries):
+            try:
+                url = f"{DAM_API_BASE}/asset/category/add?unique_id={unique_id}&category_id={cat_id}"
                 resp = requests.put(url, headers=headers, json={}, timeout=timeout)
-            if resp.status_code in (200, 204):
-                logger.info(f"  + Kategorie {cat_id} zugewiesen ({filename})")
-            else:
+                if resp.status_code == 401:
+                    invalidate_dam_token()
+                    headers = get_dam_headers()
+                    resp = requests.put(url, headers=headers, json={}, timeout=timeout)
+                if resp.status_code in (200, 204):
+                    logger.info(f"  + Kategorie {cat_id} zugewiesen ({filename})")
+                    break
+                # Asset noch nicht indexiert? Retry mit Wartezeit
+                if resp.status_code == 400 and 'cannot be found' in resp.text.lower():
+                    if attempt < max_retries - 1:
+                        wait = 2 ** attempt  # 1s, 2s, 4s, 8s
+                        logger.info(f"  ⏳ Asset noch nicht indexiert ({filename}), warte {wait}s und versuche erneut...")
+                        time.sleep(wait)
+                        continue
                 logger.warning(f"  Kategorie {cat_id} fehlgeschlagen ({filename}): HTTP {resp.status_code} - {resp.text[:150]}")
-        except Exception as e:
-            logger.warning(f"  Kategorie {cat_id} Exception ({filename}): {e}")
+                break
+            except Exception as e:
+                logger.warning(f"  Kategorie {cat_id} Exception ({filename}): {e}")
+                break
 
 
 # ============================================================
@@ -214,6 +228,9 @@ def resize_image_to_1800(image_path):
          in die resized Datei – als Sicherheitsnetz, falls PIL XMP/IPTC
          nicht sauber durchgereicht hat.
     """
+    # Tmp-Pfad behaelt original-Extension damit PIL das Format kennt (.jpg/.png/...)
+    base, ext = os.path.splitext(image_path)
+    tmp_path = base + '.resized' + ext
     try:
         with Image.open(image_path) as img:
             w, h = img.size
@@ -224,6 +241,7 @@ def resize_image_to_1800(image_path):
             xmp_blob  = img.info.get('xmp')
             exif_blob = img.info.get('exif')
             icc_blob  = img.info.get('icc_profile')
+            img_format = img.format  # 'JPEG', 'PNG', etc. — fallback falls Extension exotisch ist
 
             img.thumbnail((1800, 1800), Image.Resampling.LANCZOS)
 
@@ -234,8 +252,10 @@ def resize_image_to_1800(image_path):
                 save_kwargs['xmp'] = xmp_blob
             if icc_blob:
                 save_kwargs['icc_profile'] = icc_blob
+            # Format explizit setzen damit PIL nicht ueber Extension ratet
+            if img_format:
+                save_kwargs['format'] = img_format
 
-            tmp_path = image_path + '.resized.tmp'
             img.save(tmp_path, **save_kwargs)
             new_w, new_h = img.size
 
@@ -261,9 +281,8 @@ def resize_image_to_1800(image_path):
         logger.error(f"Image-Resize-Fehler {image_path}: {e}")
         # Tmp aufraeumen falls vorhanden
         try:
-            tmp = image_path + '.resized.tmp'
-            if os.path.exists(tmp):
-                os.unlink(tmp)
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
         except Exception:
             pass
         return False
