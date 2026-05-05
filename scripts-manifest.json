@@ -1,52 +1,52 @@
 {
   "version": "1.2.40",
-  "generated": "2026-05-05T09:04:26.840Z",
+  "generated": "2026-05-05T09:45:40.588Z",
   "description": "Manifest for delta-update system - used by script-updater.js",
   "files": {
     "src/scripts/00-SKU-based-json-2.py": {
-      "sha256": "4ee13a3e8efe7b346852b4aad8d6022e562fd01a2a42dd796bae56d8c1d7f9c1",
-      "size": 12406,
-      "mtime": "2026-04-29T05:34:35.528Z"
+      "sha256": "bc211f3b83cc2aeaaf7ce8f8d22bc9bcf7f2d9708bc1a3e0e7e560deef737888",
+      "size": 12403,
+      "mtime": "2026-05-05T09:43:35.261Z"
     },
     "src/scripts/02-1_filenaming.py": {
-      "sha256": "b6d336b27a0010f13a430b5e1829b14b99e99cba67a2ababc5e287395a979e4c",
-      "size": 27604,
-      "mtime": "2026-04-30T09:17:51.171Z"
+      "sha256": "ca7a07e32cfd7a421a86a710f0ff882c381149a892fd7b491badf5c72fc11bca",
+      "size": 27601,
+      "mtime": "2026-05-05T09:43:35.254Z"
     },
     "src/scripts/03-1_DAM-API-Request-Download.py": {
-      "sha256": "a56309488859f2858c78111613076eb86a1dfd365b34a741e45e82e3d191dd72",
-      "size": 14246,
-      "mtime": "2026-04-29T05:34:49.434Z"
+      "sha256": "c349a20c13baeb8993e3d6b4b5c2d776aea02dc7b18a2a7780c24a12e84f2d39",
+      "size": 14243,
+      "mtime": "2026-05-05T09:43:35.258Z"
     },
     "src/scripts/04-1_Jira-Final.py": {
-      "sha256": "e1e0daa1760d141541abd22f5804b0c37545c67a14fbe8407f157f8d0272ceb6",
-      "size": 26617,
-      "mtime": "2026-04-30T09:34:52.225Z"
+      "sha256": "250bef9439f032df5d2c166120cce28115cd636edaa950c1a04669628404297c",
+      "size": 26614,
+      "mtime": "2026-05-05T09:43:35.249Z"
     },
     "src/scripts/06-X-Artikel.py": {
-      "sha256": "8ba9895d23993ed731bc138f6e1e9c18a741155ad85a3a0d42d0e7a9dbcc4c84",
-      "size": 17840,
-      "mtime": "2026-04-22T09:19:32.984Z"
+      "sha256": "99873491b515fb4afa347abc29c4a8db1986db308ad5d33ec3edd08cfbebbff7",
+      "size": 17837,
+      "mtime": "2026-05-05T09:43:47.335Z"
     },
     "src/scripts/10-2_Upload-DAM-Direct.py": {
-      "sha256": "167b1c9938e52e46607b6cd4eed4ec41ff3179bd7769a19e8d699b5af8cb0eee",
-      "size": 22265,
-      "mtime": "2026-05-01T06:26:51.053Z"
+      "sha256": "b7fdd71561a0a73ed2841a901b1d0e40faf0d5106353304d557b035634c80eaf",
+      "size": 22262,
+      "mtime": "2026-05-05T09:43:35.246Z"
     },
     "src/scripts/11-1_webenabled-nein.py": {
-      "sha256": "0b89f3bbdd558cc9698f26c1b0d5ebe0a3c4cee92fddbf7ebe0b5cb345dca63e",
-      "size": 3120,
-      "mtime": "2026-04-22T09:19:32.987Z"
+      "sha256": "07be16fd7ad7dc96b2bd5c4677fde5a89db689eaf217a8cebdac5187ccb9c4b0",
+      "size": 3117,
+      "mtime": "2026-05-05T09:43:35.263Z"
     },
     "src/scripts/11-2_cleanup.py": {
-      "sha256": "af0850bb4638d1cddc4c27f590080a2626b8eddf0f13ac20e391d81c10cb6d3e",
-      "size": 3346,
-      "mtime": "2026-04-18T13:04:31.528Z"
+      "sha256": "7f5f9ef3dea31a528917c908c54c864c938cd44fee3f37f4f51e6c1f6ee41740",
+      "size": 3343,
+      "mtime": "2026-05-05T09:43:35.267Z"
     },
     "src/scripts/20-1_Cliplister-Webshop-Import.py": {
-      "sha256": "390fd3d9a0787e48d9a045400909a338ddfedf124bb36db3b60e324f503db5c3",
-      "size": 10070,
-      "mtime": "2026-04-18T13:04:31.529Z"
+      "sha256": "dbc2bfb55a6590718cea36af94de5ea444d83381275b3e2cb6f5e637fa9d6a06",
+      "size": 10067,
+      "mtime": "2026-05-05T09:43:35.265Z"
     },
     "src/scripts/2023-Lawe-Main-Classes-V5.mlmodel": {
       "sha256": "81b5c9e3f44b333dc1027f9461bb6fd16a2cdb09cc8c355ef7b5eb6a28e99ce4",
