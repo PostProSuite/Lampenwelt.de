@@ -93,23 +93,28 @@ function initWorkspace() {
 
 // ═══ CLEANUP VOR DOWNLOAD RAW ═══
 // Wird vor jedem Download-RAW-Workflow (ID 0 = SKU, ID 1 = Category) aufgerufen.
-// Räumt zwei Bereiche:
+// Das ist der EINZIGE Cleanup-Trigger — Jira Final und Upload bereinigen NICHTS mehr.
+// So bleiben Files nach jedem Workflow zur Inspektion liegen, der naechste Download
+// macht den frischen Start.
+//
+// Räumt drei Bereiche:
 //   1) 01-Input RAW files  → komplett rekursiv leeren (Files + evtl. Subfolders;
 //                            Parent-Ordner bleibt stehen)
 //   2) 02-Webcheck         → in JEDEM Unterordner nur die Dateien löschen.
 //                            Webcheck selbst und seine Unterordner bleiben stehen
 //                            (Lightroom hat sie verlinkt — Ordner löschen würde
 //                            Lightroom-Sync brechen).
-// Gibt eine kurze Status-Zusammenfassung zurück, damit der Workflow-Stream das
-// im UI als Log-Zeile zeigen kann.
+//   3) 03-Upload           → komplett rekursiv leeren (Files + evtl. Subfolders;
+//                            Parent-Ordner bleibt stehen)
 function cleanupBeforeDownloadRaw() {
   const workspace = resolveWorkspace();
   if (!workspace) {
-    return { ok: false, reason: 'no_workspace', removedInput: 0, removedWebcheck: 0 };
+    return { ok: false, reason: 'no_workspace', removedInput: 0, removedWebcheck: 0, removedUpload: 0 };
   }
 
   let removedInput = 0;
   let removedWebcheck = 0;
+  let removedUpload = 0;
   const errors = [];
 
   // ── 1) 01-Input RAW files: rekursiv leeren ─────────────────────
@@ -170,11 +175,38 @@ function cleanupBeforeDownloadRaw() {
     }
   }
 
+  // ── 3) 03-Upload: rekursiv leeren ──────────────────────────────
+  // Wichtig: nach erfolgreichem Upload bleiben hier die Files liegen
+  // (cleanup_after_upload wurde aus 10-2 entfernt). Erst der naechste
+  // Download-RAW-Lauf raeumt sie weg.
+  const uploadDir = path.join(workspace, '03-Upload');
+  if (fs.existsSync(uploadDir)) {
+    try {
+      for (const entry of fs.readdirSync(uploadDir)) {
+        if (entry.startsWith('.')) continue;
+        const p = path.join(uploadDir, entry);
+        try {
+          const stat = fs.lstatSync(p);
+          if (stat.isDirectory()) {
+            fs.rmSync(p, { recursive: true, force: true });
+          } else {
+            fs.unlinkSync(p);
+          }
+          removedUpload++;
+        } catch (err) {
+          errors.push(`03-Upload/${entry}: ${err.message}`);
+        }
+      }
+    } catch (err) {
+      errors.push(`03-Upload read: ${err.message}`);
+    }
+  }
+
   if (errors.length > 0) {
     console.warn(`⚠ Cleanup: ${errors.length} Fehler:`, errors.slice(0, 5));
   }
-  console.log(`🧹 Cleanup vor Download RAW: 01-Input=${removedInput} entfernt, 02-Webcheck=${removedWebcheck} Dateien entfernt`);
-  return { ok: true, removedInput, removedWebcheck, errors };
+  console.log(`🧹 Cleanup vor Download RAW: 01-Input=${removedInput}, 02-Webcheck=${removedWebcheck}, 03-Upload=${removedUpload}`);
+  return { ok: true, removedInput, removedWebcheck, removedUpload, errors };
 }
 
 // Workspace beim Start prüfen/erstellen
@@ -398,11 +430,11 @@ app.post('/api/run-workflow', (req, res) => {
   //   - 02-Webcheck nur Dateien in Unterordnern (Ordner bleiben — Lightroom-Sync!)
   if (workflow_id === 0 || workflow_id === 1) {
     const ts2 = new Date().toLocaleTimeString('de-DE');
-    res.write(`data: ${JSON.stringify({ type: 'log', text: `[${ts2}] 🧹 Cleanup: 01-Input RAW + Webcheck-Inhalte werden geleert…`, color: 'normal' })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'log', text: `[${ts2}] 🧹 Cleanup: 01-Input RAW + Webcheck + 03-Upload werden geleert…`, color: 'normal' })}\n\n`);
     try {
       const result = cleanupBeforeDownloadRaw();
       if (result.ok) {
-        const summary = `[${new Date().toLocaleTimeString('de-DE')}] ✓ Cleanup OK — 01-Input: ${result.removedInput} entfernt, 02-Webcheck: ${result.removedWebcheck} Dateien entfernt`;
+        const summary = `[${new Date().toLocaleTimeString('de-DE')}] ✓ Cleanup OK — 01-Input: ${result.removedInput}, 02-Webcheck: ${result.removedWebcheck} Dateien, 03-Upload: ${result.removedUpload}`;
         res.write(`data: ${JSON.stringify({ type: 'log', text: summary, color: 'green' })}\n\n`);
         if (result.errors && result.errors.length > 0) {
           res.write(`data: ${JSON.stringify({ type: 'log', text: `⚠ ${result.errors.length} Cleanup-Fehler (siehe App-Logs)`, color: 'red' })}\n\n`);

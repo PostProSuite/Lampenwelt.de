@@ -11,7 +11,10 @@ Nimmt die bereits klassifizierten Bilder aus 02-Webcheck und:
    Kommentar "Upload done 🚀" als aktueller Bearbeiter)
 4) Kopiert alle umbenannten Bilder nach 03-Upload (fuer DAM-Upload)
 5) Speichert Ticket-Key fuer Upload-Script
-6) Raeumt 01-Input und 02-Webcheck auf
+
+KEIN Cleanup mehr — der Workspace wird ausschliesslich beim naechsten
+Download-RAW-Lauf bereinigt (server.js cleanupBeforeDownloadRaw).
+Bilder bleiben hier liegen zur Inspektion.
 """
 
 import os
@@ -568,38 +571,8 @@ def update_jira_ticket(ticket_key, image_count, article_count):
         return False
 
 
-# ============================================================
-# PHASE 5: CLEANUP
-# ============================================================
-
-def cleanup():
-    """Loescht nur Bilder aus 01-Input RAW files und 02-Webcheck, behaelt aber Ordnerstruktur."""
-    logger.info("Phase 5: Arbeitsordner aufraeumen...")
-    cleanup_dirs = [
-        ('01-Input RAW files', input_path),
-        ('02-Webcheck',        webcheck_path),
-    ]
-    total = 0
-    for name, folder in cleanup_dirs:
-        if not folder or not os.path.exists(folder):
-            continue
-
-        # Rekursiv durch alle Unterordner gehen
-        for root, dirs, files in os.walk(folder):
-            for file in files:
-                if file == '.DS_Store':
-                    continue
-                if file.lower().endswith(IMAGE_EXTS):
-                    file_path = os.path.join(root, file)
-                    try:
-                        os.unlink(file_path)
-                        total += 1
-                        logger.info(f"  Gelöscht: {file}")
-                    except Exception as e:
-                        logger.warning(f"Cleanup-Fehler {file}: {e}")
-
-        logger.info(f"  {name}: Bilder gelöscht, Ordnerstruktur erhalten")
-    logger.info(f"Phase 5: {total} Bilder aufgeraeumt")
+# Cleanup-Phase wurde entfernt — Workspace wird ausschliesslich beim naechsten
+# Download-RAW-Lauf via cleanupBeforeDownloadRaw() in server.js bereinigt.
 
 
 # ============================================================
@@ -684,8 +657,9 @@ if __name__ == "__main__":
         else:
             logger.warning("Jira-Credentials nicht konfiguriert")
 
-        # Phase 5: Cleanup
-        cleanup()
+        # Cleanup wird NICHT mehr hier gemacht – nur noch beim naechsten
+        # Download-RAW-Lauf via cleanupBeforeDownloadRaw() in server.js.
+        # So bleiben Bilder zur Inspektion liegen.
 
         # Ticket-Key fuer Upload-Script speichern
         try:
