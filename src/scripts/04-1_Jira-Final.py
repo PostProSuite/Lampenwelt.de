@@ -495,8 +495,10 @@ def update_jira_ticket(ticket_key, image_count, article_count):
     - customfield_10303 = Bildanzahl
     - customfield_10299 = Artikelanzahl
     - Assignee = Reporter (Ticket-Ersteller)
-    - Kommentar "Upload done 🚀" - Autor ist automatisch der aktuell
-      authentifizierte User (JIRA_EMAIL aus config.env)
+    - Kommentar mit @-Mention auf den BEARBEITER (Assignee aus dem Ticket
+      VOR dem Reset). Falls kein Assignee → Mention auf Reporter, sonst plain.
+      Technischer Autor ist immer der JIRA_EMAIL-User (kann die API nicht
+      faelschen), aber die Mention macht den Bearbeiter sichtbar + benachrichtigt.
     - Transition auf 'QA'
     """
     try:
@@ -506,7 +508,17 @@ def update_jira_ticket(ticket_key, image_count, article_count):
 
         issue = jira.issue(ticket_key)
 
-        # Reporter auslesen (nur fuer Assignee, nicht fuer Mention)
+        # Bearbeiter (Assignee) auslesen — VOR dem Reset, weil wir den
+        # in der Mention erwaehnen wollen.
+        assignee = issue.fields.assignee
+        if assignee:
+            assignee_id = getattr(assignee, 'accountId', None) or getattr(assignee, 'name', None)
+            assignee_name = assignee.displayName
+        else:
+            assignee_id = None
+            assignee_name = None
+
+        # Reporter auslesen — fuer den Assignee-Reset und Mention-Fallback
         reporter = issue.fields.reporter
         if not reporter:
             logger.warning(f"Kein Reporter für {ticket_key} - überspringe Assign")
@@ -531,13 +543,30 @@ def update_jira_ticket(ticket_key, image_count, article_count):
         except Exception as e:
             logger.warning(f"Issue-Update teilweise fehlgeschlagen: {e}")
 
-        # Kommentar posten - Autor wird automatisch der aktuelle User
-        # (JIRA_EMAIL aus config.env, also der der die App gerade benutzt)
+        # Kommentar posten mit @-Mention.
+        # Priorisierung: Assignee (Bearbeiter) > Reporter > kein Mention
+        if assignee_id:
+            comment_body = f"[~accountid:{assignee_id}] Upload done 🚀"
+            mention_target = f"Bearbeiter ({assignee_name})"
+        elif reporter_id:
+            comment_body = f"[~accountid:{reporter_id}] Upload done 🚀"
+            mention_target = f"Reporter ({reporter_name})"
+        else:
+            comment_body = "Upload done 🚀"
+            mention_target = "ohne Mention"
+
         try:
-            jira.add_comment(ticket_key, "Upload done 🚀")
-            logger.info(f"Kommentar gepostet als {jira_email}: 'Upload done 🚀'")
+            jira.add_comment(ticket_key, comment_body)
+            logger.info(f"Kommentar gepostet ({mention_target}): {comment_body}")
         except Exception as e:
             logger.warning(f"Kommentar fehlgeschlagen: {e}")
+            # Fallback: einfacher Kommentar ohne Mention falls Mention-Format brach
+            if assignee_id or reporter_id:
+                try:
+                    jira.add_comment(ticket_key, "Upload done 🚀")
+                    logger.info("Fallback-Kommentar (ohne Mention) gepostet")
+                except Exception as e2:
+                    logger.warning(f"Auch Fallback-Kommentar fehlgeschlagen: {e2}")
 
         # Transition zu QA
         try:
