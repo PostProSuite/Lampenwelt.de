@@ -3,20 +3,20 @@
 =====================================
 Laedt Webshop-Bilder aus 03-Upload zu Cliplister und registriert sie im DAM.
 
-Ablauf:
-  1. Duplikat-Check parallel    (alle Asset-Listen-Pages gleichzeitig)
-  2. Bei vorhandenen Duplikaten: Dialog "alle ueberschreiben / ueberspringen / abbrechen"
-     Bei Ueberschreiben: alte Assets per asset/delete entfernen, dann neu uploaden
-  3. SFTP-Upload via Connection-Pool (eine SSH-Connection wird pro Worker recycled)
-  4. DAM-Insert MINIMAL          (source/fileName/categories) → Kategorie 591672
-  5. Sleep 1s + asset/category/add fuer 408xxx-Spezialkategorie (mit Retry)
+Architektur (orientiert sich am alten 10-1_Upload-FTP-Folder.py — "ratz fatz"):
+  Phase A: SFTP parallel — alle Bilder hochladen mit Connection-Pool
+  Phase B: DAM-Insert parallel — alle Bilder per HTTP einfuegen, sammelt unique_ids
+  Phase C: Einmaliger Sleep — DAM-Indexierung Zeit geben
+  Phase D: Kategorisierung parallel — alle Bilder gleichzeitig kategorisieren
 
-NICHT mehr enthalten (gegenueber alter Version):
-- KEIN Resize (Lightroom-Export macht das vorher mit eingestellter Pixelgroesse)
-- KEIN cleanup_after_upload (Workspace wird nur beim naechsten Download-RAW geleert,
-  via cleanupBeforeDownloadRaw in server.js)
+KEIN Duplikat-Check (Wunsch von Gerry — bei 70k Assets in 591672 dauert das
+alleine 60-90s). Wenn ein File mit gleichem Namen schon im DAM ist, wird trotzdem
+hochgeladen — das DAM hat dann zwei Versionen.
 
-Wichtig zu wissen:
+KEIN Resize (Lightroom-Export liefert die richtige Pixelgroesse).
+KEIN cleanup_after_upload (Workspace wird nur beim naechsten Download-RAW geleert).
+
+Wichtig:
 - Filename-Konvention: {SKU}_{position}.ext  (z.B. 8505786_1.jpg)
   → DAM erkennt SKU + Position automatisch aus dem Dateinamen.
 - Keywords kommen aus XMP:Subject / IPTC:Keywords (Lightroom-Export)
@@ -60,16 +60,11 @@ upload_folder = paths['upload']  # 03-Upload
 # DAM API
 DAM_API_BASE     = "https://api-rs.mycliplister.com/v2.2/apis"
 DAM_ASSET_INSERT = f"{DAM_API_BASE}/asset/insert"
-DAM_ASSET_LIST   = f"{DAM_API_BASE}/asset/list"
-DAM_ASSET_DELETE = f"{DAM_API_BASE}/asset/delete"
 
 # Insert-Kategorie wie im alten 10-1_Upload-FTP-Folder.py.
-# Nur diese Kategorie triggert NICHT den problematischen DAM-Workflow-Error.
 DEFAULT_CATEGORY_ID = 591672
 
 # Bildkategorien im DAM (Mood, Clipping, Detail etc.).
-# NACH dem Insert weisen wir dem Asset zusaetzlich die passende Kategorie zu —
-# anhand der Bild-Keywords (XMP:Subject) — via asset/category/add.
 KEYWORD_TO_CATEGORY_ID = {
     'Clipping':      408735, 'Freisteller':  408735,
     'Neutral':       408720, 'Produktbild':  408720,
@@ -91,6 +86,8 @@ KEYWORD_TO_CATEGORY_ID = {
 }
 
 CONCURRENCY = max(4, min(int(config.get('ASYNC_TASK_CONCURRENCY', 8)), 8))
+INDEXING_WAIT_SEC = 3   # zwischen Insert-Phase und Kategorie-Phase
+CATEGORY_RETRY = 2      # max. Retries pro Kategorie wenn 400 "not found"
 
 IMG_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.gif', '.webp')
 
@@ -160,7 +157,6 @@ def _parse_sku_and_position(filename):
 
 
 def _collect_image_files(folder):
-    """Sammelt rekursiv alle Bilder unterhalb von folder."""
     image_files = []
     for root, _, filenames in os.walk(folder):
         for f in filenames:
@@ -172,163 +168,8 @@ def _collect_image_files(folder):
 
 
 # ============================================================
-# DAM DUPLIKAT-CHECK (parallel)
-# ============================================================
-
-def _fetch_asset_page(category_id, offset, timeout):
-    """Eine Page der Asset-Liste holen — fuer parallel Pagination."""
-    headers = get_dam_headers()
-    params = {
-        "category_id": category_id,
-        "limit": 250,
-        "offset": offset,
-        "include_meta": "true",
-    }
-    resp = requests.get(DAM_ASSET_LIST, headers=headers, params=params, timeout=timeout)
-    if resp.status_code == 401:
-        invalidate_dam_token()
-        headers = get_dam_headers()
-        resp = requests.get(DAM_ASSET_LIST, headers=headers, params=params, timeout=timeout)
-    if resp.status_code != 200:
-        logger.warning(f"DAM-Listenabfrage Fehler offset={offset}: HTTP {resp.status_code}")
-        return []
-    data = resp.json()
-    return data.get('assets', data) if isinstance(data, dict) else data
-
-
-def get_existing_dam_assets(category_id=DEFAULT_CATEGORY_ID):
-    """
-    Liefert dict {filename: unique_id} aller Assets in category_id.
-    Parallel-Pagination um Duplikat-Check zu beschleunigen (113 Pages → ~12s
-    statt ~60s sequenziell).
-    """
-    timeout = config.get('API_REQUEST_TIMEOUT', 120)
-
-    # Erste Page holen um Total zu erfahren (heuristik via Page-Size)
-    page0 = _fetch_asset_page(category_id, 0, timeout)
-    if not page0:
-        logger.info("DAM: Keine Assets in Kategorie oder Listenabfrage fehlgeschlagen")
-        return {}
-
-    name_to_id = {}
-    for asset in page0:
-        title = asset.get('title') or asset.get('fileName') or ''
-        uid = asset.get('uniqueId') or asset.get('unique_id') or ''
-        if title and uid:
-            name_to_id[title] = uid
-            name_to_id[os.path.splitext(title)[0]] = uid
-
-    if len(page0) < 250:
-        logger.info(f"DAM: {len(name_to_id)//2} bestehende Assets geladen (Duplikat-Check)")
-        return name_to_id
-
-    # Mehr Pages parallel holen
-    # Wir holen erstmal in Bloecken weil wir kein Total kennen
-    BLOCK = 8  # 8 Pages = 2000 Assets pro Block
-    offset = 250
-    while True:
-        offsets = [offset + i * 250 for i in range(BLOCK)]
-        with ThreadPoolExecutor(max_workers=BLOCK) as executor:
-            futures = {executor.submit(_fetch_asset_page, category_id, off, timeout): off for off in offsets}
-            results = []
-            for fut in as_completed(futures):
-                results.append((futures[fut], fut.result()))
-
-        results.sort(key=lambda x: x[0])
-        any_full_page = False
-        for off, page in results:
-            if not page:
-                continue
-            for asset in page:
-                title = asset.get('title') or asset.get('fileName') or ''
-                uid = asset.get('uniqueId') or asset.get('unique_id') or ''
-                if title and uid:
-                    name_to_id[title] = uid
-                    name_to_id[os.path.splitext(title)[0]] = uid
-            if len(page) >= 250:
-                any_full_page = True
-
-        if not any_full_page:
-            break
-        offset += BLOCK * 250
-
-    logger.info(f"DAM: {len(name_to_id)//2} bestehende Assets geladen (Duplikat-Check, parallel)")
-    return name_to_id
-
-
-def delete_dam_asset(unique_id, filename):
-    """Loescht ein DAM-Asset vor dem Re-Upload (Ueberschreib-Logik)."""
-    timeout = config.get('API_REQUEST_TIMEOUT', 120)
-    headers = get_dam_headers()
-    try:
-        url = f"{DAM_ASSET_DELETE}?unique_id={unique_id}"
-        resp = requests.put(url, headers=headers, json={}, timeout=timeout)
-        if resp.status_code == 401:
-            invalidate_dam_token()
-            headers = get_dam_headers()
-            resp = requests.put(url, headers=headers, json={}, timeout=timeout)
-        if resp.status_code in (200, 204):
-            logger.info(f"  🗑  Altes Asset geloescht: {filename} (uid={unique_id})")
-            return True
-        logger.warning(f"  Loeschen fehlgeschlagen ({filename}): HTTP {resp.status_code} - {resp.text[:150]}")
-    except Exception as e:
-        logger.warning(f"  Loeschen Exception ({filename}): {e}")
-    return False
-
-
-# ============================================================
-# UEBERSCHREIB-DIALOG
-# ============================================================
-
-def ask_overwrite_dialog(duplicate_filenames):
-    """
-    Zeigt einen macOS-Dialog mit Liste der Duplikate.
-    Returns: 'overwrite' | 'skip' | 'cancel'
-    """
-    # Liste auf max 15 Files kuerzen damit Dialog nicht endlos wird
-    display_list = duplicate_filenames[:15]
-    extra = len(duplicate_filenames) - len(display_list)
-    list_text = "\\n  • ".join(display_list)
-    if extra > 0:
-        list_text += f"\\n  ... und {extra} weitere"
-
-    msg = (
-        f"{len(duplicate_filenames)} Bilder existieren bereits im DAM:\\n\\n"
-        f"  • {list_text}\\n\\n"
-        "Wie soll vorgegangen werden?"
-    )
-
-    script = (
-        f'set userChoice to button returned of (display dialog "{msg}" '
-        f'with title "Duplikate im DAM gefunden" '
-        f'buttons {{"Abbrechen", "Ueberspringen", "Ueberschreiben"}} '
-        f'default button "Ueberspringen" '
-        f'cancel button "Abbrechen" with icon caution)'
-    )
-    try:
-        result = subprocess.run(
-            ['osascript', '-e', script],
-            capture_output=True, text=True, timeout=300
-        )
-    except Exception as e:
-        logger.warning(f"Dialog-Fehler: {e} — fahre mit 'skip' fort")
-        return 'skip'
-
-    if result.returncode != 0:
-        return 'cancel'
-    answer = result.stdout.strip().lower()
-    if 'ueberschreiben' in answer or 'überschreiben' in answer:
-        return 'overwrite'
-    if 'ueberspringen' in answer or 'überspringen' in answer:
-        return 'skip'
-    return 'cancel'
-
-
-# ============================================================
 # SFTP CONNECTION POOL
 # ============================================================
-# Pool wiederverwendet SSH-Verbindungen quer ueber Worker-Threads.
-# Statt pro Bild SSH-Handshake (~3-5s) → ein Handshake pro Worker-Slot.
 
 _pool_lock = threading.Lock()
 _pool = []
@@ -356,7 +197,6 @@ def _get_sftp():
 
 
 def _release_sftp(conn):
-    """Verbindung in den Pool zurueck oder schliessen wenn Pool voll."""
     with _pool_lock:
         if len(_pool) < _POOL_MAX:
             _pool.append(conn)
@@ -380,19 +220,23 @@ def _close_pool():
         _pool.clear()
 
 
-def upload_to_sftp(local_path, sftp_filename):
-    """Datei zum Cliplister-SFTP hochladen via Connection-Pool."""
+# ============================================================
+# PHASE A: SFTP UPLOAD
+# ============================================================
+
+def _sftp_upload(filepath):
+    filename = os.path.basename(filepath)
     conn = None
     try:
         conn = _get_sftp()
         ssh, sftp = conn
-        remote_path = os.path.join(config['SFTP_REMOTE_DIR'], sftp_filename).replace('\\', '/')
-        sftp.put(local_path, remote_path)
+        remote_path = os.path.join(config['SFTP_REMOTE_DIR'], filename).replace('\\', '/')
+        sftp.put(filepath, remote_path)
         _release_sftp(conn)
+        logger.info(f"  ↑ SFTP OK: {filename}")
         return True
     except Exception as e:
-        logger.error(f"SFTP-Upload-Fehler {sftp_filename}: {e}")
-        # Verbindung war kaputt — nicht zurueck in Pool
+        logger.error(f"  SFTP-Fehler {filename}: {e}")
         if conn:
             try:
                 ssh, sftp = conn
@@ -403,91 +247,43 @@ def upload_to_sftp(local_path, sftp_filename):
         return False
 
 
-# ============================================================
-# POST-INSERT KATEGORISIERUNG
-# ============================================================
-
-def _assign_categories_from_keywords(unique_id, keywords, filename, max_retries=4):
-    """
-    Weist dem DAM-Asset zusaetzliche Kategorien zu (Mood/Clipping/Detail/...).
-    via asset/category/add — wie altes 02-1_filenaming.py Phase 2.
-
-    RETRY-LOGIK: Direkt nach Insert ist das Asset im DAM oft noch nicht
-    indexiert → `category/add` liefert dann HTTP 400 "asset cannot be found".
-    Wir warten initial 1s und probieren dann ggf. mit exponential backoff.
-    """
-    if not unique_id or not keywords:
-        return
-
-    cat_ids = []
-    for kw in keywords:
-        cat_id = KEYWORD_TO_CATEGORY_ID.get(kw)
-        if cat_id and cat_id not in cat_ids:
-            cat_ids.append(cat_id)
-
-    if not cat_ids:
-        logger.info(f"  ⚠ Keine Kategorie-Mapping fuer Keywords {keywords} ({filename})")
-        return
-
-    # Initial-Sleep damit DAM-Indexierung Zeit hat
-    time.sleep(1)
-
-    headers = get_dam_headers()
-    timeout = config.get('API_REQUEST_TIMEOUT', 120)
-    for cat_id in cat_ids:
-        for attempt in range(max_retries):
+def phase_a_sftp_upload(image_files):
+    """Phase A: SFTP-Upload aller Files parallel mit Pool."""
+    logger.info(f"Phase A: SFTP-Upload ({len(image_files)} Files, concurrency={CONCURRENCY})...")
+    t0 = time.time()
+    uploaded = []
+    with ThreadPoolExecutor(max_workers=CONCURRENCY) as executor:
+        futures = {executor.submit(_sftp_upload, fp): fp for fp in image_files}
+        for future in as_completed(futures):
+            fp = futures[future]
             try:
-                url = f"{DAM_API_BASE}/asset/category/add?unique_id={unique_id}&category_id={cat_id}"
-                resp = requests.put(url, headers=headers, json={}, timeout=timeout)
-                if resp.status_code == 401:
-                    invalidate_dam_token()
-                    headers = get_dam_headers()
-                    resp = requests.put(url, headers=headers, json={}, timeout=timeout)
-                if resp.status_code in (200, 204):
-                    logger.info(f"  + Kategorie {cat_id} zugewiesen ({filename})")
-                    break
-                if resp.status_code == 400 and 'cannot be found' in resp.text.lower():
-                    if attempt < max_retries - 1:
-                        wait = 2 ** attempt  # 1s, 2s, 4s, 8s
-                        logger.info(f"  ⏳ Asset noch nicht indexiert ({filename}), warte {wait}s...")
-                        time.sleep(wait)
-                        continue
-                logger.warning(f"  Kategorie {cat_id} fehlgeschlagen ({filename}): HTTP {resp.status_code} - {resp.text[:150]}")
-                break
+                if future.result():
+                    uploaded.append(fp)
             except Exception as e:
-                logger.warning(f"  Kategorie {cat_id} Exception ({filename}): {e}")
-                break
+                logger.warning(f"SFTP-Task-Fehler ({os.path.basename(fp)}): {e}")
+    dt = time.time() - t0
+    logger.info(f"Phase A fertig in {dt:.1f}s: {len(uploaded)}/{len(image_files)} hochgeladen")
+    return uploaded
 
 
 # ============================================================
-# UPLOAD EIN BILD INS DAM
+# PHASE B: DAM-INSERT
 # ============================================================
 
-def upload_single_image(filepath):
-    """
-    Upload (so wie altes 10-1 Skript): MINIMAL Insert.
-    DAM extrahiert Keywords + SKU/Position automatisch aus dem Bild + Filename.
-    KEIN Resize — Lightroom-Export liefert die richtige Pixelgroesse.
-    """
+def _dam_insert(filepath):
+    """DAM-Insert. Returns (filepath, unique_id, keywords) oder None."""
     filename = os.path.basename(filepath)
     try:
-        # Diagnostisches Logging: Keywords + SKU/Position
         sku, position = _parse_sku_and_position(filename)
         keywords = get_image_keywords(filepath)
         if keywords:
             logger.info(f"  📌 Keywords ({filename}): {keywords}")
         else:
-            logger.warning(f"  ⚪ KEINE Keywords im Bild gefunden ({filename}) — DAM kann nichts extrahieren!")
+            logger.warning(f"  ⚪ KEINE Keywords im Bild gefunden ({filename})")
         if sku is not None:
             pos_log = f", Pos {position}" if position is not None else ""
             logger.info(f"  Filename codiert: SKU {sku}{pos_log}")
 
-        # SFTP-Upload via Connection-Pool
-        if not upload_to_sftp(filepath, filename):
-            logger.warning(f"  SFTP-Upload fehlgeschlagen: {filename}")
-            return False
-
-        # DAM-Insert (minimal, exakt wie altes Skript)
         sftp_url = (
             f"https://clup01.cliplister.com/files/"
             f"{config['SFTP_USERNAME']}{config['SFTP_REMOTE_DIR']}/{filename}"
@@ -501,112 +297,168 @@ def upload_single_image(filepath):
 
         headers = get_dam_headers()
         timeout = config.get('API_REQUEST_TIMEOUT', 120)
-        response = requests.put(DAM_ASSET_INSERT, headers=headers, json=payload, timeout=timeout)
-
-        if response.status_code == 401:
+        resp = requests.put(DAM_ASSET_INSERT, headers=headers, json=payload, timeout=timeout)
+        if resp.status_code == 401:
             invalidate_dam_token()
             headers = get_dam_headers()
-            response = requests.put(DAM_ASSET_INSERT, headers=headers, json=payload, timeout=timeout)
+            resp = requests.put(DAM_ASSET_INSERT, headers=headers, json=payload, timeout=timeout)
 
-        if response.status_code in (200, 201):
+        if resp.status_code in (200, 201):
             unique_id = ''
             try:
-                result = response.json() if response.text else {}
+                result = resp.json() if resp.text else {}
                 unique_id = result.get('uniqueId') or result.get('unique_id') or ''
             except Exception:
                 pass
-            logger.info(f"  ✓ Upload OK: {filename}")
-
-            if unique_id and keywords:
-                _assign_categories_from_keywords(unique_id, keywords, filename)
-            elif not unique_id:
-                logger.warning(f"  Keine unique_id in Insert-Response ({filename}) — Kategorie nicht zuweisbar")
-            return True
+            logger.info(f"  ✓ DAM-Insert OK: {filename}")
+            return (filepath, unique_id, keywords)
         else:
-            logger.warning(f"  FEHLER: {filename}: HTTP {response.status_code} - {response.text[:200]}")
-            return False
+            logger.warning(f"  DAM-Insert FEHLER {filename}: HTTP {resp.status_code} - {resp.text[:200]}")
+            return None
 
     except requests.exceptions.Timeout:
-        logger.error(f"  TIMEOUT: {filename}")
-        return False
+        logger.error(f"  DAM-Insert TIMEOUT: {filename}")
+        return None
     except Exception as e:
-        logger.error(f"  FEHLER: {filename}: {e}")
-        return False
+        logger.error(f"  DAM-Insert FEHLER {filename}: {e}")
+        return None
+
+
+def phase_b_dam_insert(uploaded_files):
+    """Phase B: DAM-Insert aller hochgeladenen Files parallel."""
+    if not uploaded_files:
+        return []
+    logger.info(f"Phase B: DAM-Insert ({len(uploaded_files)} Files, concurrency={CONCURRENCY})...")
+    t0 = time.time()
+    results = []
+    with ThreadPoolExecutor(max_workers=CONCURRENCY) as executor:
+        futures = {executor.submit(_dam_insert, fp): fp for fp in uploaded_files}
+        for future in as_completed(futures):
+            try:
+                r = future.result()
+                if r:
+                    results.append(r)
+            except Exception as e:
+                logger.warning(f"DAM-Insert Task-Fehler: {e}")
+    dt = time.time() - t0
+    logger.info(f"Phase B fertig in {dt:.1f}s: {len(results)}/{len(uploaded_files)} eingefuegt")
+    return results
 
 
 # ============================================================
-# UPLOAD ALL
+# PHASE D: KATEGORISIERUNG
+# ============================================================
+
+def _assign_categories(unique_id, keywords, filename):
+    """Setze Spezial-Kategorien per asset/category/add."""
+    if not unique_id or not keywords:
+        return
+
+    cat_ids = []
+    for kw in keywords:
+        cat_id = KEYWORD_TO_CATEGORY_ID.get(kw)
+        if cat_id and cat_id not in cat_ids:
+            cat_ids.append(cat_id)
+
+    if not cat_ids:
+        return
+
+    headers = get_dam_headers()
+    timeout = config.get('API_REQUEST_TIMEOUT', 120)
+    for cat_id in cat_ids:
+        for attempt in range(CATEGORY_RETRY):
+            try:
+                url = f"{DAM_API_BASE}/asset/category/add?unique_id={unique_id}&category_id={cat_id}"
+                resp = requests.put(url, headers=headers, json={}, timeout=timeout)
+                if resp.status_code == 401:
+                    invalidate_dam_token()
+                    headers = get_dam_headers()
+                    resp = requests.put(url, headers=headers, json={}, timeout=timeout)
+                if resp.status_code in (200, 204):
+                    logger.info(f"  + Kategorie {cat_id} zugewiesen ({filename})")
+                    break
+                if resp.status_code == 400 and 'cannot be found' in resp.text.lower():
+                    if attempt < CATEGORY_RETRY - 1:
+                        time.sleep(2)
+                        continue
+                logger.warning(f"  Kategorie {cat_id} fehlgeschlagen ({filename}): HTTP {resp.status_code}")
+                break
+            except Exception as e:
+                logger.warning(f"  Kategorie {cat_id} Exception ({filename}): {e}")
+                break
+
+
+def phase_d_categorize(insert_results):
+    """Phase D: Kategorisierung aller Bilder parallel."""
+    if not insert_results:
+        return
+    to_process = []
+    for fp, uid, kws in insert_results:
+        if not uid or not kws:
+            continue
+        if any(KEYWORD_TO_CATEGORY_ID.get(k) for k in kws):
+            to_process.append((fp, uid, kws))
+
+    if not to_process:
+        logger.info("Phase D: Keine Kategorien zu setzen")
+        return
+
+    logger.info(f"Phase D: Kategorisierung ({len(to_process)} Files, concurrency={CONCURRENCY})...")
+    t0 = time.time()
+    with ThreadPoolExecutor(max_workers=CONCURRENCY) as executor:
+        futures = [
+            executor.submit(_assign_categories, uid, kws, os.path.basename(fp))
+            for fp, uid, kws in to_process
+        ]
+        for fut in as_completed(futures):
+            try:
+                fut.result()
+            except Exception as e:
+                logger.warning(f"Kategorie Task-Fehler: {e}")
+    dt = time.time() - t0
+    logger.info(f"Phase D fertig in {dt:.1f}s")
+
+
+# ============================================================
+# UPLOAD ALL — Orchestrierung der 4 Phasen
 # ============================================================
 
 def upload_all_images():
-    """Upload aller Bilder aus 03-Upload ins DAM."""
+    """Upload aller Bilder aus 03-Upload ins DAM in 4 Phasen."""
     if not os.path.exists(upload_folder):
         logger.warning(f"Upload-Ordner nicht gefunden: {upload_folder}")
-        return 0, 0
+        return 0
 
     image_files = _collect_image_files(upload_folder)
     if not image_files:
         logger.info("Keine Bilder zum Hochladen gefunden")
-        return 0, 0
+        return 0
 
-    # Duplikat-Check (parallel) — liefert {filename: unique_id}
-    existing = get_existing_dam_assets(DEFAULT_CATEGORY_ID)
+    total_t0 = time.time()
 
-    # Welche unserer Files sind Duplikate?
-    duplicates = []   # [(filepath, unique_id), ...]
-    fresh = []        # [filepath, ...]
-    for fp in image_files:
-        base = os.path.basename(fp)
-        base_no_ext = os.path.splitext(base)[0]
-        uid = existing.get(base) or existing.get(base_no_ext)
-        if uid:
-            duplicates.append((fp, uid))
-        else:
-            fresh.append(fp)
+    # Phase A: SFTP
+    uploaded = phase_a_sftp_upload(image_files)
+    if not uploaded:
+        logger.error("Phase A: keine Bilder erfolgreich hochgeladen")
+        return 0
 
-    # Wenn Duplikate vorhanden: User fragen
-    overwrite_mode = False
-    if duplicates:
-        dup_names = [os.path.basename(fp) for fp, _ in duplicates]
-        choice = ask_overwrite_dialog(dup_names)
-        if choice == 'cancel':
-            logger.info("Upload durch Benutzer abgebrochen (Dialog)")
-            return 0, 0
-        if choice == 'overwrite':
-            overwrite_mode = True
-            logger.info(f"Benutzer-Wahl: Alle {len(duplicates)} Duplikate ueberschreiben")
-            # Alte Assets loeschen — danach koennen wir sie normal hochladen
-            for fp, uid in duplicates:
-                delete_dam_asset(uid, os.path.basename(fp))
-            # In to_upload Liste aufnehmen
-            fresh.extend(fp for fp, _ in duplicates)
-        else:
-            logger.info(f"Benutzer-Wahl: {len(duplicates)} Duplikate ueberspringen")
+    # Phase B: DAM-Insert
+    insert_results = phase_b_dam_insert(uploaded)
+    if not insert_results:
+        logger.error("Phase B: keine Inserts erfolgreich")
+        return 0
 
-    if not fresh:
-        logger.info("Keine neuen Bilder hochzuladen.")
-        return 0, len(duplicates) if not overwrite_mode else 0
+    # Phase C: Sleep, damit DAM-Indexierung aufholt
+    logger.info(f"Phase C: warte {INDEXING_WAIT_SEC}s auf DAM-Indexierung...")
+    time.sleep(INDEXING_WAIT_SEC)
 
-    logger.info(f"{len(fresh)} Bilder werden hochgeladen (concurrency={CONCURRENCY})...")
+    # Phase D: Kategorisierung parallel
+    phase_d_categorize(insert_results)
 
-    uploaded = 0
-    total = len(fresh)
-    with ThreadPoolExecutor(max_workers=CONCURRENCY) as executor:
-        futures = {executor.submit(upload_single_image, fp): fp for fp in fresh}
-        for future in as_completed(futures):
-            try:
-                if future.result():
-                    uploaded += 1
-            except Exception as e:
-                logger.warning(f"Upload-Task-Fehler: {e}")
-
-            done_count = sum(1 for f in futures if f.done())
-            pct = round(done_count / total * 100)
-            print(f"Upload: {done_count}/{total} ({pct}%) — {uploaded} erfolgreich", flush=True)
-
-    skipped = len(duplicates) if not overwrite_mode else 0
-    logger.info(f"Upload abgeschlossen: {uploaded}/{total} hochgeladen, {skipped} uebersprungen")
-    return uploaded, skipped
+    total_dt = time.time() - total_t0
+    inserted = len(insert_results)
+    logger.info(f"Upload komplett: {inserted}/{len(image_files)} in {total_dt:.1f}s")
+    return inserted
 
 
 # ============================================================
@@ -619,7 +471,6 @@ if __name__ == "__main__":
         logger.info("Upload ins DAM gestartet")
         logger.info("=" * 70)
 
-        # Ticket-Key (optional, fuer Logging)
         ticket_key = os.environ.get("POSTPRO_INPUT", "").strip()
         if not ticket_key:
             ticket_file = os.path.join(upload_folder, ".ticket_key")
@@ -643,7 +494,6 @@ if __name__ == "__main__":
             logger.error(f"Ordner: {upload_folder}")
             sys.exit(1)
 
-        # Übersicht
         folder_counts = {}
         for fp in image_files:
             folder = os.path.basename(os.path.dirname(fp))
@@ -651,24 +501,16 @@ if __name__ == "__main__":
         folder_summary = ", ".join(f"{c} in {f}" for f, c in folder_counts.items())
         logger.info(f"{len(image_files)} Bilder gefunden ({folder_summary})")
 
-        # Upload
-        logger.info("Bilder ins DAM hochladen...")
-        uploaded, skipped = upload_all_images()
+        uploaded = upload_all_images()
 
-        # SFTP-Pool aufraeumen
         _close_pool()
-
-        # KEIN cleanup mehr — der Workspace wird beim naechsten Download-RAW
-        # via cleanupBeforeDownloadRaw() in server.js bereinigt.
 
         logger.info("=" * 70)
         if uploaded == len(image_files):
             logger.info(f"✓ ERFOLG: {uploaded} Bilder hochgeladen")
-        elif uploaded > 0 and skipped > 0 and uploaded + skipped == len(image_files):
-            logger.info(f"✓ FERTIG: {uploaded} hochgeladen, {skipped} uebersprungen (Duplikate)")
         else:
-            failed = len(image_files) - uploaded - skipped
-            logger.warning(f"⚠ TEILWEISE: {uploaded} hochgeladen, {skipped} uebersprungen, {failed} fehlgeschlagen")
+            failed = len(image_files) - uploaded
+            logger.warning(f"⚠ TEILWEISE: {uploaded}/{len(image_files)} erfolgreich, {failed} fehlgeschlagen")
         if ticket_key:
             logger.info(f"Ticket: {ticket_key}")
         logger.info("=" * 70)
